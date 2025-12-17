@@ -131,8 +131,39 @@ extension AssessmentsHubView {
     }
 
     private func importFromCSV(url: URL) {
+        // Handle security-scoped URLs (e.g., iCloud Drive, Files app)
+        let needsAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if needsAccess { url.stopAccessingSecurityScopedResource() }
+        }
+
+        var readError: NSError?
+        var loadedData: Data?
+
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        var innerError: NSError?
+        coordinator.coordinate(readingItemAt: url, options: [], error: &readError) { coordinatedURL in
+            do {
+                loadedData = try Data(contentsOf: coordinatedURL)
+            } catch {
+                innerError = error as NSError
+            }
+        }
+        if readError == nil { readError = innerError }
+
+        if let readError {
+            importErrorMessage = readError.localizedDescription
+            isShowingErrorAlert = true
+            return
+        }
+
+        guard let data = loadedData else {
+            importErrorMessage = "Failed to read file."
+            isShowingErrorAlert = true
+            return
+        }
+
         do {
-            let data = try Data(contentsOf: url)
             let def = try CSVCodec.decode(data: data)
             try AssessmentStorage.save(def)
             refresh()
