@@ -14,7 +14,7 @@ struct ContentView: View {
                     BubbleLayerView() // 🫧 animated bubbles beneath content
                 }
                 VStack(spacing: 40) {
-                    Text("SCOTSMAN.AI")
+                    Text("SCOTSMAN")
                         .font(.largeTitle)
                         .bold()
                     
@@ -209,28 +209,28 @@ struct HelpView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
 
-                GroupBox(label: Text("🤿 Welcome to SCOTSMAN-FM").font(.title2).bold()) {
+                GroupBox(label: Text("🤿 Welcome to SCOTSMAN").font(.title2).bold()) {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Our goal is to help you dive into your sales pipeline and to help you qualify and close the treasure therein!")
 
-                        Text("SCOTSMAN-FM is based on the new or existing companies you want to sell to, the contacts in those companies you will meet and interact with, the services you plan to sell to them, all wrapped up in the opportunities you hope to close.")
+                        Text("SCOTSMAN is based on the new or existing companies you want to sell to, the contacts in those companies you will meet and interact with, the services you plan to sell to them, all wrapped up in the opportunities you hope to close.")
 
-                        Text("The odds of closing those opportunities increase the better you qualify those opportunities. Qualification is achieved by asking questions to better understand your position. SCOTSMAN-FM therefore allows you to create a customized list of questions to ask in your sales meetings to ensure you really understand where you stand.")
+                        Text("The odds of closing those opportunities increase the better you qualify those opportunities. Qualification is achieved by asking questions to better understand your position. SCOTSMAN therefore allows you to create a customized list of questions to ask in your sales meetings to ensure you really understand where you stand.")
 
                         Text("Qualification is important in not only reflecting where you are, but also in helping you build an action plan to increase your chances of closing the deal. Qualification should not just record what you have achieved to date, but help to actively plan your next steps to raise your chances of winning the opportunity.")
                     }
                     .padding()
                 }
 
-                GroupBox(label: Text("🧭 SCOTSMAN-FM Methodologies").font(.title2).bold()) {
+                GroupBox(label: Text("🧭 SCOTSMAN Methodologies").font(.title2).bold()) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("SCOTSMAN-FM offers three qualification methodologies, with differing levels of complexity and thoroughness. Those methodologies are:")
+                        Text("SCOTSMAN offers three qualification methodologies, with differing levels of complexity and thoroughness. Those methodologies are:")
 
                         Text("• BANT – Budget, Authority, Need and Timescale")
                         Text("• MEDDIC – Metrics, Economic Buyer, Decision Maker, Decision Process, Identify Pain, Champion")
                         Text("• SCOTSMAN – Solution, Competition, Originality, Timescale, Size, Money, Authority, Need")
 
-                        Text("The first two are industry standard methodologies and the third is a SCOTSMAN-FM special! Please select your preferred methodology in settings (the gear icon).")
+                        Text("The first two are industry standard methodologies and the third is the recommended and most complete methodology - SCOTSMAN! Please select your preferred methodology in settings (the gear icon).")
 
                         Text("BANT is very effective for opportunities that have a short deal cycle and which are not overly complex from a decision structure. It is used extensively by SDR’s in the SaaS software and online selling marketplace as it hits to the heart of the matter.")
 
@@ -247,7 +247,7 @@ struct HelpView: View {
 
                         Text("The icons for each qualification area can be red for unqualified, yellow if you are making progress but not yet fully satisfied, and green if you are confident in that item. Be honest and track your progress towards more successfully closed deals. Use the AI recommendation engine if you need some additional guidance!")
 
-                        Text("Happy SCOTSMAN-FM'ing!")
+                        Text("Happy Selling!")
                             .font(.headline)
                             .padding(.top)
                     }

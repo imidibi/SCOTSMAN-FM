@@ -1,6 +1,6 @@
 //
 //  AIRecommendationManager.swift
-//  SCOTSMAN-FM
+//  SCOTSMAN
 //
 //  Created by Ian Miller on 6/2/25.
 //
@@ -47,10 +47,10 @@ struct AIRecommendationManager {
                 SCOTSMAN Qualification:
                 • Solution: \(wrapper.solutionStatus) — \(wrapper.solutionCommentary)
                 • Competition: \(wrapper.competitionStatus) — \(wrapper.competitionCommentary)
-                • Originality: \(wrapper.uniquesStatus) — \(wrapper.uniquesCommentary)
+                • Originality: \(wrapper.originalityStatus) — \(wrapper.originalityCommentary)
                 • Timescale: \(wrapper.timingStatus) — \(wrapper.timingCommentary)
-                • Size: \(wrapper.benefitsStatus) — \(wrapper.benefitsCommentary)
-                • Money: \(wrapper.budgetStatus) — \(wrapper.budgetCommentary)
+                • Size: \(wrapper.sizeStatus) — \(wrapper.sizeCommentary)
+                • Money: \(wrapper.moneyStatus) — \(wrapper.moneyCommentary)
                 • Authority: \(wrapper.authorityStatus) — \(wrapper.authorityCommentary)
                 • Need: \(wrapper.needStatus) — \(wrapper.needCommentary)
                 """
@@ -131,10 +131,10 @@ struct AIRecommendationManager {
             SCOTSMAN Qualification:
             • Solution: \(opportunity.solutionStatus) — \(opportunity.solutionCommentary)
             • Competition: \(opportunity.competitionStatus) — \(opportunity.competitionCommentary)
-            • Originality: \(opportunity.uniquesStatus) — \(opportunity.uniquesCommentary)
+            • Originality: \(opportunity.originalityStatus) — \(opportunity.originalityCommentary)
             • Timescale: \(opportunity.timingStatus) — \(opportunity.timingCommentary)
-            • Size: \(opportunity.benefitsStatus) — \(opportunity.benefitsCommentary)
-            • Money: \(opportunity.budgetStatus) — \(opportunity.budgetCommentary)
+            • Size: \(opportunity.sizeStatus) — \(opportunity.sizeCommentary)
+            • Money: \(opportunity.moneyStatus) — \(opportunity.moneyCommentary)
             • Authority: \(opportunity.authorityStatus) — \(opportunity.authorityCommentary)
             • Need: \(opportunity.needStatus) — \(opportunity.needCommentary)
             """

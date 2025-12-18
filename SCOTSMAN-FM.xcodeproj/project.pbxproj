@@ -277,10 +277,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Scotsman-fm/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = SCOTSMANFM;
+				INFOPLIST_KEY_CFBundleDisplayName = SCOTSMAN;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SCOTSMAN-FM uses the microphone to record client responses for transcription.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "SCOTSMAN-FM uses speech recognition to transcribe client responses during meetings.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SCOTSMAN uses the microphone to record client responses for transcription.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "SCOTSMAN uses speech recognition to transcribe client responses during meetings.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -313,10 +313,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Scotsman-fm/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = SCOTSMANFM;
+				INFOPLIST_KEY_CFBundleDisplayName = SCOTSMAN;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SCOTSMAN-FM uses the microphone to record client responses for transcription.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "SCOTSMAN-FM uses speech recognition to transcribe client responses during meetings.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SCOTSMAN uses the microphone to record client responses for transcription.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "SCOTSMAN uses speech recognition to transcribe client responses during meetings.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
