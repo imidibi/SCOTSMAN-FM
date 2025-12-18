@@ -14,7 +14,7 @@ struct ContentView: View {
                     BubbleLayerView() // 🫧 animated bubbles beneath content
                 }
                 VStack(spacing: 40) {
-                    Text("SalesDiver Dashboard")
+                    Text("SCOTSMAN.AI")
                         .font(.largeTitle)
                         .bold()
                     
