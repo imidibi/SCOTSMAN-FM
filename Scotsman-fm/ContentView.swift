@@ -3,20 +3,15 @@ import CoreData
 // No import needed — just ensure FollowUpsView.swift is in the same target
 
 struct ContentView: View {
-    @AppStorage("disableBubbleAnimation") private var disableBubbleAnimation: Bool = false
     @StateObject private var companyViewModel = CompanyViewModel()
 
     var body: some View {
         NavigationStack {
             ZStack {
-                WaterBackgroundView() // ✅ Added Water Background
-                if !disableBubbleAnimation {
-                    BubbleLayerView() // 🫧 animated bubbles beneath content
-                }
+                BrandBackgroundView()
                 VStack(spacing: 40) {
-                    Text("SCOTSMAN")
-                        .font(.largeTitle)
-                        .bold()
+                    BrandHeaderView()
+                        .padding(.top, 20)
                     
                     GridView(companyViewModel: companyViewModel)
 
@@ -45,37 +40,53 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Water Background View
-struct WaterBackgroundView: View {
+// MARK: - Brand Background
+struct BrandBackgroundView: View {
     var body: some View {
-        LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.4), Color.blue.opacity(0.7)]),
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
-            .edgesIgnoringSafeArea(.all)
-            .overlay(
-                WaveShape()
-                    .fill(Color.white.opacity(0.3))
-                    .frame(height: 200)
-                    .offset(y: -50), alignment: .top
-            )
+        LinearGradient(
+            gradient: Gradient(colors: [Color.black, Color.black.opacity(0.92)]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
     }
 }
 
-// MARK: - Wave Shape
-struct WaveShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let width = rect.width
-        let height = rect.height
-        
-        path.move(to: CGPoint(x: 0, y: height * 0.7))
-        path.addCurve(to: CGPoint(x: width, y: height * 0.7),
-                      control1: CGPoint(x: width * 0.25, y: height * 0.5),
-                      control2: CGPoint(x: width * 0.75, y: height * 0.9))
-        path.addLine(to: CGPoint(x: width, y: 0))
-        path.addLine(to: CGPoint(x: 0, y: 0))
-        path.closeSubpath()
-        
-        return path
+// MARK: - Brand Colors
+enum BrandColors {
+    static let red = Color(red: 0.90, green: 0.12, blue: 0.17)
+    static let green = Color(red: 0.20, green: 0.74, blue: 0.33)
+    static let yellow = Color(red: 0.98, green: 0.76, blue: 0.18)
+    static let tile = Color(white: 0.12)
+    static let tileBorder = Color.white.opacity(0.10)
+    static let textSecondary = Color.white.opacity(0.75)
+}
+
+// MARK: - Brand Header
+struct BrandHeaderView: View {
+    private let logoImage: UIImage? = UIImage(named: "SCOTSMAN_RAG_logo")
+
+    var body: some View {
+        VStack(spacing: 14) {
+            if let logoImage {
+                Image(uiImage: logoImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 520)
+                    .padding(.horizontal)
+            } else {
+                // Fallback if the logo asset isn't present yet
+                Text("SCOTSMAN")
+                    .font(.system(size: 42, weight: .semibold, design: .default))
+                    .foregroundColor(.white)
+                    .tracking(4)
+            }
+
+            Text("Field Manual")
+                .font(.headline)
+                .foregroundColor(BrandColors.textSecondary)
+        }
+        .padding(.bottom, 6)
     }
 }
 
@@ -116,83 +127,40 @@ struct GridView: View {
             ForEach(items) { item in
                 NavigationLink(destination: item.destination()) {
                     VStack {
-                        Image(systemName: item.icon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 80, height: 80)
-                            .foregroundColor(.blue)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 18)
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [BrandColors.red.opacity(0.9), BrandColors.green.opacity(0.9), BrandColors.yellow.opacity(0.9)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 92, height: 92)
+
+                            Image(systemName: item.icon)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 42, height: 42)
+                                .foregroundColor(.black.opacity(0.85))
+                        }
 
                         Text(item.name)
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
                     }
-                    .padding()
+                    .padding(16)
                     .frame(width: 180, height: 180)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(15)
-                    .shadow(radius: 5)
+                    .background(BrandColors.tile)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(BrandColors.tileBorder, lineWidth: 1)
+                    )
+                    .cornerRadius(18)
+                    .shadow(color: Color.black.opacity(0.35), radius: 10, x: 0, y: 6)
                 }
             }
         }
-    }
-}
-
-// MARK: - Bubble Animation
-struct Bubble: Identifiable {
-    let id = UUID()
-    var x: CGFloat
-    var size: CGFloat
-    var speed: Double
-    var yOffset: CGFloat = UIScreen.main.bounds.height
-}
-
-struct BubbleLayerView: View {
-    @State private var bubbles: [Bubble] = []
-
-    var body: some View {
-        ZStack {
-            ForEach(bubbles) { bubble in
-                Circle()
-                    .fill(bubbleColor)
-                    .frame(width: bubble.size, height: bubble.size)
-                    .position(x: bubble.x, y: bubble.yOffset)
-                    .opacity(1.0)
-                    .onAppear {
-                        withAnimation(.easeOut(duration: bubble.speed)) {
-                            if let index = bubbles.firstIndex(where: { $0.id == bubble.id }) {
-                                bubbles[index].yOffset = 150 // stop below wave crest
-                                bubbles[index].x += CGFloat.random(in: -60...60)
-                            }
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + bubble.speed) {
-                            bubbles.removeAll { $0.id == bubble.id }
-                        }
-                    }
-            }
-        }
-        .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { _ in
-                let newBubble = Bubble(
-                    x: UIScreen.main.bounds.width / 2,
-                    size: CGFloat.random(in: 8...18),
-                    speed: Double.random(in: 4...7)
-                )
-                bubbles.append(newBubble)
-            }
-        }
-    }
-
-    private var bubbleColor: Color {
-        Color(UIColor { trait in
-            switch trait.userInterfaceStyle {
-            case .dark:
-                // Match top gradient color of the background in dark mode
-                return UIColor.systemBlue.withAlphaComponent(0.25)
-            default:
-                // Match top gradient color of the background in light mode
-                return UIColor.white.withAlphaComponent(0.25)
-            }
-        })
     }
 }
 
