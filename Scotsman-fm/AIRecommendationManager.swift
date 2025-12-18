@@ -1,6 +1,6 @@
 //
 //  AIRecommendationManager.swift
-//  SalesDiver
+//  SCOTSMAN-FM
 //
 //  Created by Ian Miller on 6/2/25.
 //
@@ -42,18 +42,17 @@ struct AIRecommendationManager {
                 • Identify Pain: \(wrapper.needStatus) — \(wrapper.needCommentary)
                 • Champion: \(wrapper.championStatus) — \(wrapper.championCommentary)
                 """
-            case "SCUBATANK":
+            case "SCOTSMAN":
                 summary += """
-                SCUBATANK Qualification:
+                SCOTSMAN Qualification:
                 • Solution: \(wrapper.solutionStatus) — \(wrapper.solutionCommentary)
                 • Competition: \(wrapper.competitionStatus) — \(wrapper.competitionCommentary)
-                • Uniques: \(wrapper.uniquesStatus) — \(wrapper.uniquesCommentary)
-                • Benefits: \(wrapper.benefitsStatus) — \(wrapper.benefitsCommentary)
-                • Authority: \(wrapper.authorityStatus) — \(wrapper.authorityCommentary)
+                • Originality: \(wrapper.uniquesStatus) — \(wrapper.uniquesCommentary)
                 • Timescale: \(wrapper.timingStatus) — \(wrapper.timingCommentary)
-                • Action Plan: \(wrapper.actionPlanStatus) — \(wrapper.actionPlanCommentary)
+                • Size: \(wrapper.benefitsStatus) — \(wrapper.benefitsCommentary)
+                • Money: \(wrapper.budgetStatus) — \(wrapper.budgetCommentary)
+                • Authority: \(wrapper.authorityStatus) — \(wrapper.authorityCommentary)
                 • Need: \(wrapper.needStatus) — \(wrapper.needCommentary)
-                • Kash: \(wrapper.budgetStatus) — \(wrapper.budgetCommentary)
                 """
             default:
                 summary += "Unknown methodology."
@@ -127,18 +126,17 @@ struct AIRecommendationManager {
             • Identify Pain: \(opportunity.needStatus) — \(opportunity.needCommentary)
             • Champion: \(opportunity.championStatus) — \(opportunity.championCommentary)
             """
-        case "SCUBATANK":
+        case "SCOTSMAN":
             summary += """
-            SCUBATANK Qualification:
+            SCOTSMAN Qualification:
             • Solution: \(opportunity.solutionStatus) — \(opportunity.solutionCommentary)
             • Competition: \(opportunity.competitionStatus) — \(opportunity.competitionCommentary)
-            • Uniques: \(opportunity.uniquesStatus) — \(opportunity.uniquesCommentary)
-            • Benefits: \(opportunity.benefitsStatus) — \(opportunity.benefitsCommentary)
-            • Authority: \(opportunity.authorityStatus) — \(opportunity.authorityCommentary)
+            • Originality: \(opportunity.uniquesStatus) — \(opportunity.uniquesCommentary)
             • Timescale: \(opportunity.timingStatus) — \(opportunity.timingCommentary)
-            • Action Plan: \(opportunity.actionPlanStatus) — \(opportunity.actionPlanCommentary)
+            • Size: \(opportunity.benefitsStatus) — \(opportunity.benefitsCommentary)
+            • Money: \(opportunity.budgetStatus) — \(opportunity.budgetCommentary)
+            • Authority: \(opportunity.authorityStatus) — \(opportunity.authorityCommentary)
             • Need: \(opportunity.needStatus) — \(opportunity.needCommentary)
-            • Kash: \(opportunity.budgetStatus) — \(opportunity.budgetCommentary)
             """
         default:
             summary += "Unknown methodology."

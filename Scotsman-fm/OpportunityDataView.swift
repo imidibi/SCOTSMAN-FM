@@ -187,8 +187,8 @@ struct OpportunityDataView: View {
             .sheet(item: $selectedQualificationItem) { item in
                 if currentMethodology == "MEDDIC" {
                     MEDDICEditorView(viewModel: viewModel, opportunity: item.opportunity, metricType: item.qualificationType)
-                } else if currentMethodology == "SCUBATANK" {
-                    SCUBATANKEditorView(viewModel: viewModel, opportunity: item.opportunity, elementType: item.qualificationType)
+                } else if currentMethodology == "SCOTSMAN" {
+                    SCOTSMANEditorView(viewModel: viewModel, opportunity: item.opportunity, elementType: item.qualificationType)
                 }
             }
             .onChange(of: selectedQualificationItem) {
@@ -268,9 +268,9 @@ struct QualificationIconView: View {
                 MEDDICIndicatorView(opportunity: opportunity) { meddicType in
                     onSelect(SelectedQualificationItem(opportunity: opportunity, qualificationType: meddicType.rawValue))
                 }
-            } else if currentMethodology == "SCUBATANK" {
-                SCUBATANKIndicatorView(opportunity: opportunity) { scubatankType in
-                    onSelect(SelectedQualificationItem(opportunity: opportunity, qualificationType: scubatankType.rawValue))
+            } else if currentMethodology == "SCOTSMAN" {
+                SCOTSMANIndicatorView(opportunity: opportunity) { scotsmanType in
+                    onSelect(SelectedQualificationItem(opportunity: opportunity, qualificationType: scotsmanType.rawValue))
                 }
             }
         }

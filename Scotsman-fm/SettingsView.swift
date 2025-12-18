@@ -314,7 +314,7 @@ struct ProductSelection: Hashable {
                     Picker("Methodology", selection: $selectedMethodology) {
                         Text("BANT").tag("BANT")
                         Text("MEDDIC").tag("MEDDIC")
-                        Text("SCUBATANK").tag("SCUBATANK")
+                        Text("SCOTSMAN").tag("SCOTSMAN")
                     }
                     .pickerStyle(SegmentedPickerStyle())
                 }

@@ -209,8 +209,8 @@ struct FollowUpsView: View {
             BANTIndicatorView(opportunity: wrapper, onBANTSelected: { _ in })
         } else if currentMethodology == "MEDDIC" {
             MEDDICIndicatorView(opportunity: wrapper, onMEDDICSelected: { _ in })
-        } else if currentMethodology == "SCUBATANK" {
-            SCUBATANKIndicatorView(opportunity: wrapper, onSCUBATANKSelected: { _ in })
+        } else if currentMethodology == "SCOTSMAN" {
+            SCOTSMANIndicatorView(opportunity: wrapper, onSCOTSMANSelected: { _ in })
         } else {
             EmptyView()
         }

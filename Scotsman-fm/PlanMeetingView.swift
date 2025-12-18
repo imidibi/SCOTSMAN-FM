@@ -233,8 +233,8 @@ struct PlanMeetingView: View {
         switch currentMethodology {
         case "MEDDIC":
             categories = ["Metrics", "Economic Buyer", "Decision Criteria", "Decision Process", "Identify Pain", "Champion"]
-        case "SCUBATANK":
-            categories = ["Solution", "Competition", "Uniques", "Benefits", "Authority", "Timescale", "Action Plan", "Need", "Kash"]
+        case "SCOTSMAN":
+            categories = ["Solution", "Competition", "Originality", "Timescale", "Size", "Money", "Authority", "Need"]
         default:
             categories = ["Budget", "Authority", "Need", "Timescale"]
         }
@@ -611,8 +611,8 @@ struct PlanMeetingView: View {
                 BANTIndicatorView(opportunity: wrapper, onBANTSelected: { _ in })
             } else if currentMethodology == "MEDDIC" {
                 MEDDICIndicatorView(opportunity: wrapper, onMEDDICSelected: { _ in })
-            } else if currentMethodology == "SCUBATANK" {
-                SCUBATANKIndicatorView(opportunity: wrapper, onSCUBATANKSelected: { _ in })
+            } else if currentMethodology == "SCOTSMAN" {
+                SCOTSMANIndicatorView(opportunity: wrapper, onSCOTSMANSelected: { _ in })
             } else {
                 EmptyView()
             }

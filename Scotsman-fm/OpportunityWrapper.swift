@@ -117,7 +117,7 @@ class OpportunityWrapper: ObservableObject, Identifiable {
     var identifyPainCommentary: String { needCommentary }
     var decisionProcessCommentary: String { timingCommentary }
 
-    // ✅ SCUBATANK Qualification Status
+    // ✅ SCOTSMAN Qualification Status
     var solutionStatus: Int {
         let value = managedObject.value(forKey: "solutionStatus") as? Int ?? 0
         // print("Accessing solutionStatus: \(value)")
@@ -148,7 +148,7 @@ class OpportunityWrapper: ObservableObject, Identifiable {
         return value
     }
 
-    // ✅ SCUBATANK Qualification Commentary
+    // ✅ SCOTSMAN Qualification Commentary
     var solutionCommentary: String {
         managedObject.value(forKey: "solutionCommentary") as? String ?? ""
     }
@@ -168,6 +168,16 @@ class OpportunityWrapper: ObservableObject, Identifiable {
     var actionPlanCommentary: String {
         managedObject.value(forKey: "actionPlanCommentary") as? String ?? ""
     }
+
+    // ✅ SCOTSMAN field aliases (stored in existing underlying fields during development)
+    var originalityStatus: Int { uniquesStatus }
+    var originalityCommentary: String { uniquesCommentary }
+
+    var sizeStatus: Int { benefitsStatus }
+    var sizeCommentary: String { benefitsCommentary }
+
+    var moneyStatus: Int { budgetStatus }
+    var moneyCommentary: String { budgetCommentary }
 
     // Expose status value from OpportunityEntity (1: Active, 2: Lost, 3: Closed)
     var status: Int16 {

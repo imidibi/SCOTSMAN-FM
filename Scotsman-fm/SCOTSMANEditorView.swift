@@ -1,5 +1,5 @@
 //
-//  SCUBATANKEditorView.swift
+//  SCOTSMANEditorView.swift
 //  SalesDiver
 //
 //  Created by Ian Miller on 5/10/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SCUBATANKEditorView: View {
+struct SCOTSMANEditorView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject var viewModel: OpportunityViewModel
     var opportunity: OpportunityWrapper
@@ -21,21 +21,19 @@ struct SCUBATANKEditorView: View {
         case "Solution":
             return "Has the customer confirmed that the solution you are proposing will do the job?"
         case "Competition":
-            return "Do you know who you are up against? Do they have any secret sauce?"
-        case "Uniques":
-            return "Have you identified the elements in your solution that make you stand out against the competition?"
-        case "Benefits":
-            return "Have you clearly articulated the tangible benefits the client will gain from your proposal?"
-        case "Authority":
-            return "Have you met the individual with the budget authority and the power to make the final purchase decision?"
+            return "Do you know who you are up against, and what their strengths are in this deal?"
+        case "Originality":
+            return "What is truly distinctive about your approach or offering for this customer?"
         case "Timescale":
-            return "When does the client need the solution implemented by?"
-        case "Action Plan":
-            return "Have you scheduled multiple touch points with the client like reference calls, executive dinner etc.?"
+            return "When does the client need the solution implemented by, and what is driving that timeline?"
+        case "Size":
+            return "Do you understand the scope/size of the opportunity (users, sites, devices, or effort) well enough to estimate accurately?"
+        case "Money":
+            return "Is there a realistic budget range identified, and does it align with the likely cost/value of the solution?"
+        case "Authority":
+            return "Have you identified and engaged the person(s) who can approve the purchase and drive the decision?"
         case "Need":
             return "Do you know the specific problems or challenges the prospect is facing that your solution can address?"
-        case "Kash":
-            return "Is the client’s budget adequate to meet their needs?"
         default:
             return ""
         }
@@ -65,22 +63,22 @@ struct SCUBATANKEditorView: View {
                         .italic()
                 }
             }
-            .navigationTitle("\(elementType) Qualification")
+            .navigationTitle("\(elementType) SCOTSMAN")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        // print("Saving SCUBATANK - Element: \(elementType), Status: \(selectedStatus), Commentary: \(commentary)")
-                        viewModel.updateSCUBATANKStatus(for: opportunity, elementType: elementType, status: selectedStatus, commentary: commentary)
+                        // print("Saving SCOTSMAN - Element: \(elementType), Status: \(selectedStatus), Commentary: \(commentary)")
+                        viewModel.updateSCOTSMANStatus(for: opportunity, elementType: elementType, status: selectedStatus, commentary: commentary)
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                let statusInfo = viewModel.getSCUBATANKStatus(for: opportunity, elementType: elementType)
-                // print("Loaded SCUBATANK - Element: \(elementType), Status (Type: \(type(of: statusInfo.status))) = \(statusInfo.status), Commentary: \(statusInfo.commentary)")
+                let statusInfo = viewModel.getSCOTSMANStatus(for: opportunity, elementType: elementType)
+                // print("Loaded SCOTSMAN - Element: \(elementType), Status (Type: \(type(of: statusInfo.status))) = \(statusInfo.status), Commentary: \(statusInfo.commentary)")
                 selectedStatus = Int("\(statusInfo.status)") ?? 0
                 commentary = statusInfo.commentary
             }

@@ -17,8 +17,8 @@ struct QuestionsView: View {
         switch selectedMethodology {
         case "MEDDIC":
             return ["Metrics", "Economic Buyer", "Decision Criteria", "Decision Process", "Identify Pain", "Champion"]
-        case "SCUBATANK":
-            return ["Solution", "Competition", "Uniques", "Benefits", "Authority", "Timescale", "Action Plan", "Need", "Kash"]
+        case "SCOTSMAN":
+            return ["Solution", "Competition", "Originality", "Timescale", "Size", "Money", "Authority", "Need"]
         default:
             return ["Budget", "Authority", "Need", "Timescale"]
         }
@@ -28,8 +28,9 @@ struct QuestionsView: View {
         switch selectedMethodology {
         case "MEDDIC":
             return ["m.circle.fill", "e.circle.fill", "d.circle.fill", "d.circle.fill", "i.circle.fill", "c.circle.fill"]
-        case "SCUBATANK":
-            return ["s.circle.fill", "c.circle.fill", "u.circle.fill", "b.circle.fill", "a.circle.fill", "t.circle.fill", "a.circle.fill", "n.circle.fill", "k.circle.fill"]
+        case "SCOTSMAN":
+            // 8 icons for SCOTSMAN (S C O T S M A N)
+            return ["s.circle.fill", "c.circle.fill", "o.circle.fill", "t.circle.fill", "s.circle.fill", "m.circle.fill", "a.circle.fill", "n.circle.fill"]
         default:
             return ["b.circle.fill", "a.circle.fill", "n.circle.fill", "t.circle.fill"]
         }
@@ -271,52 +272,54 @@ struct QuestionsView: View {
             ("Champion", "What support do they need to build internal consensus?"),
             ("Champion", "How can we help them succeed as your internal champion?"),
 
-            // SCUBATANK Questions
+            // SCOTSMAN Questions
             ("Solution", "Has the customer confirmed that the solution you are proposing will do the job?"),
             ("Solution", "Have you validated the solution against all of the client’s stated requirements?"),
             ("Solution", "Has the customer acknowledged your solution’s fit with their environment?"),
             ("Solution", "Have you demonstrated the solution in action?"),
             ("Solution", "Has the client shared any gaps or concerns about your proposed solution?"),
-            ("Competition", "Do you know who you are up against?"),
+
+            ("Competition", "Do you know who you are up against, and what their strengths are in this deal?"),
             ("Competition", "Have you identified the competitors being evaluated?"),
             ("Competition", "What perceived advantages do competitors have?"),
             ("Competition", "Have you assessed how the client views competitors?"),
             ("Competition", "Are there internal alternatives being considered?"),
-            ("Uniques", "Have you identified elements that make you stand out?"),
-            ("Uniques", "Can you articulate your unique differentiators?"),
-            ("Uniques", "Has the client acknowledged your differentiators?"),
-            ("Uniques", "Have you mapped your strengths to client priorities?"),
-            ("Uniques", "Are your differentiators defensible against competitive claims?"),
-            ("Benefits", "Have you clearly articulated the tangible benefits?"),
-            ("Benefits", "Have you quantified the impact of these benefits?"),
-            ("Benefits", "Has the client validated these benefits?"),
-            ("Benefits", "Are benefits aligned with client success metrics?"),
-            ("Benefits", "Have you connected benefits to stakeholder priorities?"),
-            ("Authority", "Have you met the individual with budget authority?"),
-            ("Authority", "Do you understand how they evaluate investments?"),
-            ("Authority", "Have you involved all influencers?"),
-            ("Authority", "Are there multiple decision-makers to align with?"),
-            ("Authority", "Have you mapped out the decision-making hierarchy?"),
-            ("Timescale", "When does the client need the solution implemented?"),
-            ("Timescale", "What events are driving this timeline?"),
-            ("Timescale", "Are there specific project milestones?"),
-            ("Timescale", "What risks could delay implementation?"),
-            ("Timescale", "How does this timeline compare to delivery capacity?"),
-            ("Action Plan", "Have you scheduled touch points with the client?"),
-            ("Action Plan", "Does the client agree to the next steps and timeline?"),
-            ("Action Plan", "Have you defined ownership for each step?"),
-            ("Action Plan", "Are stakeholders committed to scheduled meetings?"),
-            ("Action Plan", "Have you aligned the action plan with procurement?"),
-            ("Need", "Do you know the specific problems the prospect is facing?"),
+
+            ("Originality", "What is truly distinctive about your approach or offering for this customer?"),
+            ("Originality", "Can you articulate your key differentiators in plain language?"),
+            ("Originality", "Has the client acknowledged what makes your approach different?"),
+            ("Originality", "Are your differentiators defensible against competitive claims?"),
+            ("Originality", "Have you mapped your differentiators to the client’s priorities?"),
+
+            ("Timescale", "When does the client need the solution implemented by, and what is driving that timeline?"),
+            ("Timescale", "What events or deadlines are driving this timeline?"),
+            ("Timescale", "Are there specific project milestones we need to plan around?"),
+            ("Timescale", "What risks could delay implementation or approval?"),
+            ("Timescale", "How does this timeline compare to delivery capacity and dependencies?"),
+
+            ("Size", "Do you understand the scope/size of the opportunity well enough to estimate accurately?"),
+            ("Size", "How many users/sites/devices (or units) are in scope?"),
+            ("Size", "What’s in scope vs. out of scope for the first phase?"),
+            ("Size", "What level of effort is expected for onboarding/implementation?"),
+            ("Size", "Are there constraints that change the size of the work (locations, complexity, integrations)?"),
+
+            ("Money", "Is there a realistic budget range identified, and does it align with the likely cost/value of the solution?"),
+            ("Money", "Have they confirmed the available budget range?"),
+            ("Money", "What internal approval processes govern the budget?"),
+            ("Money", "Have you discussed budget with the economic buyer or budget owner?"),
+            ("Money", "Is there flexibility in budget if value is clearly demonstrated?"),
+
+            ("Authority", "Have you identified and engaged the person(s) who can approve the purchase and drive the decision?"),
+            ("Authority", "Who else influences the decision, and what are their priorities?"),
+            ("Authority", "Do you understand how the organization evaluates investments like this?"),
+            ("Authority", "Are there multiple decision-makers or a committee to align with?"),
+            ("Authority", "Have you mapped out the decision-making and procurement steps?"),
+
+            ("Need", "Do you know the specific problems or challenges the prospect is facing that your solution can address?"),
             ("Need", "Has the client prioritized these needs?"),
             ("Need", "Are these needs urgent or mission-critical?"),
-            ("Need", "Have you uncovered the root cause?"),
-            ("Need", "Have you validated your solution addresses these needs?"),
-            ("Kash", "Is the client’s budget adequate to meet their needs?"),
-            ("Kash", "Have they confirmed the available budget range?"),
-            ("Kash", "What internal approval processes govern the budget?"),
-            ("Kash", "Have you discussed the budget with the economic buyer?"),
-            ("Kash", "Is there flexibility in the budget if value is demonstrated?")
+            ("Need", "Have you uncovered the root cause behind the stated symptoms?"),
+            ("Need", "Have you validated your solution directly addresses these needs?")
         ]
 
         for (category, text) in defaults {

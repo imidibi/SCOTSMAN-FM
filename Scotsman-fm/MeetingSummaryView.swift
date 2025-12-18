@@ -15,7 +15,7 @@ struct MeetingSummaryView: View {
     @AppStorage("selectedMethodology") private var currentMethodology: String = "BANT"
     @State private var selectedBANTItem: SelectedBANTItem? = nil
     @State private var selectedMEDDICItem: SelectedQualificationItem? = nil
-    @State private var selectedSCUBATANKItem: SelectedSCUBATANKItem? = nil
+    @State private var selectedSCOTSMANItem: SelectedSCOTSMANItem? = nil
     @StateObject private var viewModel = OpportunityViewModel()
     @State private var selectedOpportunity: OpportunityWrapper?
     @State private var aiRecommendation: String = ""
@@ -118,9 +118,9 @@ struct MeetingSummaryView: View {
                             MEDDICIndicatorView(opportunity: wrapper, onMEDDICSelected: { selected in
                                 selectedMEDDICItem = SelectedQualificationItem(opportunity: wrapper, qualificationType: selected.rawValue)
                             })
-                        case "SCUBATANK":
-                            SCUBATANKIndicatorView(opportunity: wrapper, onSCUBATANKSelected: { selected in
-                                selectedSCUBATANKItem = SelectedSCUBATANKItem(opportunity: wrapper, scubatankType: selected)
+                        case "SCOTSMAN":
+                            SCOTSMANIndicatorView(opportunity: wrapper, onSCOTSMANSelected: { selected in
+                                selectedSCOTSMANItem = SelectedSCOTSMANItem(opportunity: wrapper, scotsmanType: selected)
                             })
                         default:
                             EmptyView()
@@ -159,8 +159,8 @@ struct MeetingSummaryView: View {
         .sheet(item: $selectedMEDDICItem) { (item: SelectedQualificationItem) in
             MEDDICEditorView(viewModel: viewModel, opportunity: item.opportunity, metricType: item.qualificationType)
         }
-        .sheet(item: $selectedSCUBATANKItem) { (item: SelectedSCUBATANKItem) in
-            SCUBATANKEditorView(viewModel: viewModel, opportunity: item.opportunity, elementType: item.scubatankType.rawValue)
+        .sheet(item: $selectedSCOTSMANItem) { (item: SelectedSCOTSMANItem) in
+            SCOTSMANEditorView(viewModel: viewModel, opportunity: item.opportunity, elementType: item.scotsmanType.rawValue)
         }
     }
     private func generateAIRecommendation() {
@@ -178,7 +178,7 @@ struct QualificationEditorRouter: View {
     let wrapper: OpportunityWrapper?
     let bantType: BANTIndicatorView.BANTType?
     let meddicType: MEDDICType?
-    let scubatankType: SCUBATANKType?
+    let scotsmanType: SCOTSMANType?
     let viewModel: OpportunityViewModel
 
     var body: some View {
@@ -196,11 +196,11 @@ struct QualificationEditorRouter: View {
                 } else {
                     Text("Missing MEDDIC type")
                 }
-            case "SCUBATANK":
-                if let type = scubatankType {
-                    SCUBATANKEditorView(viewModel: viewModel, opportunity: wrapper, elementType: type.rawValue)
+            case "SCOTSMAN":
+                if let type = scotsmanType {
+                    SCOTSMANEditorView(viewModel: viewModel, opportunity: wrapper, elementType: type.rawValue)
                 } else {
-                    Text("Missing SCUBATANK type")
+                    Text("Missing SCOTSMAN type")
                 }
             default:
                 Text("Unknown qualification method")
@@ -213,9 +213,9 @@ struct QualificationEditorRouter: View {
 
 
 
-// If not available globally, define SelectedSCUBATANKItem here:
-struct SelectedSCUBATANKItem: Identifiable {
+// If not available globally, define SelectedSCOTSMANItem here:
+struct SelectedSCOTSMANItem: Identifiable {
     let id = UUID()
     let opportunity: OpportunityWrapper
-    let scubatankType: SCUBATANKType
+    let scotsmanType: SCOTSMANType
 }

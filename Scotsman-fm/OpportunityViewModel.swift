@@ -187,74 +187,89 @@ class OpportunityViewModel: ObservableObject {
         }
     }
 
-    func updateSCUBATANKStatus(for opportunity: OpportunityWrapper, elementType: String, status: Int, commentary: String) {
-        // print("Updating SCUBATANK for Opportunity ID: \(opportunity.managedObject.objectID)")
-        // print("Element: \(elementType), Status: \(status), Commentary: \(commentary)")
-        
+    func updateSCOTSMANStatus(for opportunity: OpportunityWrapper, elementType: String, status: Int, commentary: String) {
         switch elementType {
         case "Solution":
-            // print("Updating solution qualification.")
             opportunity.managedObject.setValue(status, forKey: "solutionStatus")
             opportunity.managedObject.setValue(commentary, forKey: "solutionCommentary")
+
         case "Competition":
-            // print("Updating competition qualification.")
             opportunity.managedObject.setValue(status, forKey: "competitionStatus")
             opportunity.managedObject.setValue(commentary, forKey: "competitionCommentary")
-        case "Uniques":
-            // print("Updating uniques qualification.")
+
+        // SCOTSMAN: Originality (temporarily stored in the existing "uniques" fields)
+        case "Originality":
             opportunity.managedObject.setValue(status, forKey: "uniquesStatus")
             opportunity.managedObject.setValue(commentary, forKey: "uniquesCommentary")
-        case "Benefits":
-            // print("Updating benefits qualification.")
-            opportunity.managedObject.setValue(status, forKey: "benefitsStatus")
-            opportunity.managedObject.setValue(commentary, forKey: "benefitsCommentary")
-        case "Action Plan":
-            // print("Updating action plan qualification.")
-            opportunity.managedObject.setValue(status, forKey: "actionPlanStatus")
-            opportunity.managedObject.setValue(commentary, forKey: "actionPlanCommentary")
-        case "Need":
-            // print("Updating need qualification.")
-            opportunity.managedObject.setValue(status, forKey: "needStatus")
-            opportunity.managedObject.setValue(commentary, forKey: "needCommentary")
-        case "Authority":
-            // print("Updating authority qualification.")
-            opportunity.managedObject.setValue(status, forKey: "authorityStatus")
-            opportunity.managedObject.setValue(commentary, forKey: "authorityCommentary")
+
+        // SCOTSMAN: Timescale (stored in the existing "timing" fields)
         case "Timescale":
-            // print("Updating timescale qualification.")
             opportunity.managedObject.setValue(status, forKey: "timingStatus")
             opportunity.managedObject.setValue(commentary, forKey: "timingCommentary")
-        case "Kash":
-            // print("Updating Kash qualification.")
+
+        // SCOTSMAN: Size (temporarily stored in the existing "benefits" fields)
+        case "Size":
+            opportunity.managedObject.setValue(status, forKey: "benefitsStatus")
+            opportunity.managedObject.setValue(commentary, forKey: "benefitsCommentary")
+
+        // SCOTSMAN: Money (stored in the existing "budget" fields)
+        case "Money":
             opportunity.managedObject.setValue(status, forKey: "budgetStatus")
             opportunity.managedObject.setValue(commentary, forKey: "budgetCommentary")
+
+        case "Authority":
+            opportunity.managedObject.setValue(status, forKey: "authorityStatus")
+            opportunity.managedObject.setValue(commentary, forKey: "authorityCommentary")
+
+        case "Need":
+            opportunity.managedObject.setValue(status, forKey: "needStatus")
+            opportunity.managedObject.setValue(commentary, forKey: "needCommentary")
+
         default:
             break
         }
-        // print("Update complete. Saving data.")
+
         saveData()
     }
 
-    func getSCUBATANKStatus(for opportunity: OpportunityWrapper, elementType: String) -> (status: Int, commentary: String) {
+    func getSCOTSMANStatus(for opportunity: OpportunityWrapper, elementType: String) -> (status: Int, commentary: String) {
         switch elementType {
         case "Solution":
             return (opportunity.managedObject.value(forKey: "solutionStatus") as? Int ?? 0,
                     opportunity.managedObject.value(forKey: "solutionCommentary") as? String ?? "")
+
         case "Competition":
             return (opportunity.managedObject.value(forKey: "competitionStatus") as? Int ?? 0,
                     opportunity.managedObject.value(forKey: "competitionCommentary") as? String ?? "")
-        case "Uniques":
+
+        // SCOTSMAN: Originality (temporarily stored in the existing "uniques" fields)
+        case "Originality":
             return (opportunity.managedObject.value(forKey: "uniquesStatus") as? Int ?? 0,
                     opportunity.managedObject.value(forKey: "uniquesCommentary") as? String ?? "")
-        case "Benefits":
+
+        // SCOTSMAN: Timescale (stored in the existing "timing" fields)
+        case "Timescale":
+            return (opportunity.managedObject.value(forKey: "timingStatus") as? Int ?? 0,
+                    opportunity.managedObject.value(forKey: "timingCommentary") as? String ?? "")
+
+        // SCOTSMAN: Size (temporarily stored in the existing "benefits" fields)
+        case "Size":
             return (opportunity.managedObject.value(forKey: "benefitsStatus") as? Int ?? 0,
                     opportunity.managedObject.value(forKey: "benefitsCommentary") as? String ?? "")
-        case "Action Plan":
-            return (opportunity.managedObject.value(forKey: "actionPlanStatus") as? Int ?? 0,
-                    opportunity.managedObject.value(forKey: "actionPlanCommentary") as? String ?? "")
-        case "Kash":
+
+        // SCOTSMAN: Money (stored in the existing "budget" fields)
+        case "Money":
             return (opportunity.managedObject.value(forKey: "budgetStatus") as? Int ?? 0,
                     opportunity.managedObject.value(forKey: "budgetCommentary") as? String ?? "")
+
+        case "Authority":
+            return (opportunity.managedObject.value(forKey: "authorityStatus") as? Int ?? 0,
+                    opportunity.managedObject.value(forKey: "authorityCommentary") as? String ?? "")
+
+        case "Need":
+            return (opportunity.managedObject.value(forKey: "needStatus") as? Int ?? 0,
+                    opportunity.managedObject.value(forKey: "needCommentary") as? String ?? "")
+
         default:
             return (0, "")
         }
