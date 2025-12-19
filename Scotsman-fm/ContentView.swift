@@ -4,6 +4,7 @@ import CoreData
 
 struct ContentView: View {
     @StateObject private var companyViewModel = CompanyViewModel()
+    @StateObject private var hubSpotAuth = HubSpotAuthManager.shared
 
     var body: some View {
         NavigationStack {
@@ -27,7 +28,9 @@ struct ContentView: View {
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        NavigationLink(destination: SettingsView(companyViewModel: companyViewModel)) {
+                        NavigationLink(destination: SettingsView(companyViewModel: companyViewModel)
+                            .environmentObject(hubSpotAuth)
+                        ) {
                             Image(systemName: "gearshape.fill")
                                 .imageScale(.large)
                                 .padding(5)
@@ -36,6 +39,9 @@ struct ContentView: View {
                 }
             }
             .ignoresSafeArea()
+        }
+        .onOpenURL { url in
+            hubSpotAuth.handleOpenURL(url)
         }
     }
 }
