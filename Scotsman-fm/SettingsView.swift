@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 import AuthenticationServices
 import CryptoKit
+import OSLog
 
 struct Contact: Hashable {
     let firstName: String
@@ -11,7 +12,7 @@ struct Contact: Hashable {
 
 struct SettingsView: View {
     @ObservedObject var companyViewModel: CompanyViewModel
-    @EnvironmentObject var hubSpotAuth: HubSpotAuthManager
+    @EnvironmentObject private var hubSpotAuth: HubSpotAuthManager
     @AppStorage("autotaskEnabled") private var autotaskEnabled = false
     @AppStorage("autotaskAPIUsername") private var apiUsername = ""
     @AppStorage("autotaskAPISecret") private var apiSecret = ""
@@ -53,6 +54,15 @@ struct ProductSelection: Hashable {
     @State private var showProductSearch = false
     @State private var productImportCache: [(Int, String, String, String, Double?, Double?, Date?)] = []
     @State private var hasValidatedOpenAIKey = false
+    
+    // HubSpot selective import (search + pick)
+    @State private var hubspotDealSearchText: String = ""
+    @State private var hubspotDealSearchResults: [HubSpotDealSummary] = []
+    @State private var selectedHubSpotDealIDs: Set<String> = []
+    @State private var hubspotStatusMessage: String = ""
+    @State private var isHubspotSearching: Bool = false
+    @State private var isHubspotImporting: Bool = false
+    @State private var showHubspotDealPicker: Bool = false
     
     private var searchHeaderText: String {
         switch selectedCategory {
@@ -286,6 +296,149 @@ struct ProductSelection: Hashable {
         }
     }
     
+    // MARK: - HubSpot Integration Section (extracted to help the compiler)
+    private var hubSpotIntegrationSection: some View {
+        Section(header: Text("HubSpot Integration")) {
+            HStack {
+                Text("Status")
+                Spacer()
+                Text(hubSpotAuth.isConnected ? "Connected" : "Not connected")
+                    .foregroundColor(hubSpotAuth.isConnected ? .green : .red)
+            }
+
+            Button("Connect HubSpot") {
+                hubSpotAuth.startOAuth()
+            }
+            .disabled(hubSpotAuth.isConnected)
+
+            if !hubSpotAuth.lastAuthorizeURL.isEmpty {
+                Text(hubSpotAuth.lastAuthorizeURL)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .textSelection(.enabled)
+            }
+
+            if hubSpotAuth.isConnected {
+                Button(isHubspotSearching ? "Loading deals…" : "Sync Deals Now") {
+                    hubSpotSyncDealsNowTapped()
+                }
+                .disabled(isHubspotSearching)
+
+                if !hubspotStatusMessage.isEmpty {
+                    Text(hubspotStatusMessage)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+
+                Button("Disconnect") {
+                    hubSpotDisconnectTapped()
+                }
+                .foregroundColor(.red)
+            }
+
+            Text(hubSpotAuth.lastSyncDescription)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - HubSpot actions (helpers to avoid EnvironmentObject wrapper inference issues)
+    private func hubSpotSyncDealsNowTapped() {
+        guard hubSpotAuth.isConnected else { return }
+        isHubspotSearching = true
+        hubspotStatusMessage = ""
+        selectedHubSpotDealIDs.removeAll()
+
+        Task {
+            do {
+                let deals = try await hubSpotAuth.fetchDealSummaries(limit: 50)
+                await MainActor.run {
+                    hubspotDealSearchResults = deals
+                    hubspotStatusMessage = deals.isEmpty ? "No deals returned." : "Fetched \(deals.count) deals. Select which to import."
+                    isHubspotSearching = false
+                    showHubspotDealPicker = true
+                }
+            } catch {
+                await MainActor.run {
+                    hubspotStatusMessage = "HubSpot fetch failed: \(error)"
+                    isHubspotSearching = false
+                }
+            }
+        }
+    }
+
+    private func hubSpotDisconnectTapped() {
+        hubSpotAuth.disconnect()
+    }
+
+    // MARK: - HubSpot Deal Picker (POC)
+    private var hubspotDealPickerSheet: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                Text("Select deals to import")
+                    .font(.headline)
+
+                if hubspotDealSearchResults.isEmpty {
+                    Text("No deals to show.")
+                        .foregroundColor(.secondary)
+                } else {
+                    List {
+                        ForEach(hubspotDealSearchResults) { deal in
+                            HStack {
+                                Text(deal.name)
+                                Spacer()
+                                if selectedHubSpotDealIDs.contains(deal.id) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if selectedHubSpotDealIDs.contains(deal.id) {
+                                    selectedHubSpotDealIDs.remove(deal.id)
+                                } else {
+                                    selectedHubSpotDealIDs.insert(deal.id)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HStack {
+                    Button("Close") {
+                        showHubspotDealPicker = false
+                    }
+
+                    Spacer()
+
+                    Button(isHubspotImporting ? "Importing…" : "Import Selected") {
+                        hubspotImportSelectedDealsTapped()
+                    }
+                    .disabled(selectedHubSpotDealIDs.isEmpty || isHubspotImporting)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
+            .navigationTitle("HubSpot Deals")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showHubspotDealPicker = false }
+                }
+            }
+        }
+    }
+
+    private func hubspotImportSelectedDealsTapped() {
+        // POC: we’ll wire this to Core Data import next.
+        isHubspotImporting = true
+        let count = selectedHubSpotDealIDs.count
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            hubspotStatusMessage = "Selected \(count) deal(s). Next step: import into Core Data + fetch company/contacts."
+            isHubspotImporting = false
+            showHubspotDealPicker = false
+        }
+    }
+    
    var body: some View {
         NavigationStack {
             Form {
@@ -385,37 +538,14 @@ struct ProductSelection: Hashable {
                         .foregroundColor(.blue)
                     }
                 }
+                
+                hubSpotIntegrationSection
+                
+
 
                 autotaskIntegrationSection
 
-                Section(header: Text("HubSpot Integration")) {
-                    HStack {
-                        Text("Status")
-                        Spacer()
-                        Text(hubSpotAuth.isConnected ? "Connected" : "Not connected")
-                            .foregroundColor(hubSpotAuth.isConnected ? .green : .red)
-                    }
-
-                    Button("Connect HubSpot") {
-                        hubSpotAuth.startOAuth()
-                    }
-                    .disabled(hubSpotAuth.isConnected)
-
-                    if hubSpotAuth.isConnected {
-                        Button("Sync Deals Now") {
-                            Task { await hubSpotAuth.syncDealsNow() }
-                        }
-
-                        Button("Disconnect") {
-                            hubSpotAuth.disconnect()
-                        }
-                        .foregroundColor(.red)
-                    }
-
-                    Text(hubSpotAuth.lastSyncDescription)
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                }
+              
 
                 if autotaskEnabled {
                     selectDataTypeSection
@@ -424,6 +554,9 @@ struct ProductSelection: Hashable {
                 additionalSettingsSections
             }
             .navigationTitle("Settings")
+            .sheet(isPresented: $showHubspotDealPicker) {
+                hubspotDealPickerSheet
+            }
             .overlay(
                 showContactSearch ? contactSelectionOverlay : nil
             )
@@ -1408,343 +1541,7 @@ private func importSelectedContacts() {
 }
 
 
-// MARK: - HubSpot Integration (OAuth + PKCE)
 
-final class HubSpotAuthManager: NSObject, ObservableObject {
-    static let shared = HubSpotAuthManager()
-
-    // MARK: - Configure these
-    // Client ID from your HubSpot public app
-    private let clientId = "<HUBSPOT_CLIENT_ID>"
-
-    // HTTPS redirect URL hosted on your SalesDiver HubSpot website (relay page)
-    // Example: https://salesdiver.net/hubspot/oauth/callback
-    private let httpsRedirectUri = "<HTTPS_RELAY_REDIRECT_URI>"
-
-    // Deep link callback expected from the relay page
-    // Example: salesdiver://hubspot/oauth?code=...&state=...
-    private let appCallbackScheme = "salesdiver"
-    private let appCallbackHost = "hubspot"
-
-    private let scopes = [
-        "crm.objects.deals.read",
-        "crm.objects.deals.write"
-    ]
-
-    @Published private(set) var isConnected: Bool = false
-    @Published private(set) var lastSyncAt: Date? = nil
-
-    var lastSyncDescription: String {
-        guard let lastSyncAt else { return "Last sync: never" }
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return "Last sync: \(f.string(from: lastSyncAt))"
-    }
-
-    private var currentState: String?
-    private var codeVerifier: String?
-    private var authSession: ASWebAuthenticationSession?
-
-    private let tokenStore = HubSpotTokenStore()
-
-    override private init() {
-        super.init()
-        self.isConnected = tokenStore.hasValidRefreshToken
-    }
-
-    func startOAuth() {
-        let verifier = Self.randomURLSafeString(length: 64)
-        let challenge = Self.pkceChallenge(from: verifier)
-        let state = Self.randomURLSafeString(length: 32)
-
-        self.codeVerifier = verifier
-        self.currentState = state
-
-        let scopeString = scopes.joined(separator: " ")
-
-        var comps = URLComponents(string: "https://app.hubspot.com/oauth/authorize")!
-        comps.queryItems = [
-            .init(name: "client_id", value: clientId),
-            .init(name: "redirect_uri", value: httpsRedirectUri),
-            .init(name: "response_type", value: "code"),
-            .init(name: "scope", value: scopeString),
-            .init(name: "state", value: state),
-            .init(name: "code_challenge", value: challenge),
-            .init(name: "code_challenge_method", value: "S256")
-        ]
-
-        guard let authURL = comps.url else { return }
-
-        // Note: the relay page returns a deep link (salesdiver://...) back to the app.
-        authSession = ASWebAuthenticationSession(url: authURL, callbackURLScheme: appCallbackScheme) { [weak self] callbackURL, error in
-            if let error {
-                print("HubSpot OAuth cancelled/failed: \(error)")
-                return
-            }
-            guard let callbackURL else { return }
-            self?.handleOpenURL(callbackURL)
-        }
-
-        authSession?.presentationContextProvider = self
-        authSession?.prefersEphemeralWebBrowserSession = true
-        authSession?.start()
-    }
-
-    func handleOpenURL(_ url: URL) {
-        guard url.scheme == appCallbackScheme else { return }
-        guard url.host == appCallbackHost else { return }
-
-        let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        let code = comps?.queryItems?.first(where: { $0.name == "code" })?.value
-        let state = comps?.queryItems?.first(where: { $0.name == "state" })?.value
-
-        guard let code, let state, state == currentState else {
-            print("HubSpot OAuth callback missing code/state or state mismatch")
-            return
-        }
-        guard let verifier = codeVerifier else {
-            print("Missing PKCE code_verifier")
-            return
-        }
-
-        Task {
-            do {
-                try await exchangeCodeForTokens(code: code, codeVerifier: verifier)
-                await MainActor.run {
-                    self.isConnected = self.tokenStore.hasValidRefreshToken
-                }
-            } catch {
-                print("Token exchange failed: \(error)")
-            }
-        }
-    }
-
-    func disconnect() {
-        tokenStore.clear()
-        isConnected = false
-    }
-
-    func syncDealsNow() async {
-        do {
-            let accessToken = try await ensureAccessToken()
-            let client = HubSpotAPIClient(accessToken: accessToken)
-            _ = try await client.listDeals(limit: 100)
-            await MainActor.run { self.lastSyncAt = Date() }
-        } catch {
-            print("Sync failed: \(error)")
-        }
-    }
-
-    private func exchangeCodeForTokens(code: String, codeVerifier: String) async throws {
-        var req = URLRequest(url: URL(string: "https://api.hubapi.com/oauth/v1/token")!)
-        req.httpMethod = "POST"
-        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-
-        let body: [String: String] = [
-            "grant_type": "authorization_code",
-            "client_id": clientId,
-            "redirect_uri": httpsRedirectUri,
-            "code": code,
-            "code_verifier": codeVerifier
-        ]
-        req.httpBody = Self.formURLEncoded(body)
-
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw HubSpotError.httpError(data: data)
-        }
-
-        let token = try JSONDecoder().decode(HubSpotTokenResponse.self, from: data)
-        tokenStore.save(token)
-    }
-
-    private func refreshTokens(refreshToken: String) async throws {
-        var req = URLRequest(url: URL(string: "https://api.hubapi.com/oauth/v1/token")!)
-        req.httpMethod = "POST"
-        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-
-        let body: [String: String] = [
-            "grant_type": "refresh_token",
-            "client_id": clientId,
-            "refresh_token": refreshToken
-        ]
-        req.httpBody = Self.formURLEncoded(body)
-
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw HubSpotError.httpError(data: data)
-        }
-
-        let token = try JSONDecoder().decode(HubSpotTokenResponse.self, from: data)
-        tokenStore.save(token)
-    }
-
-    private func ensureAccessToken() async throws -> String {
-        if let access = tokenStore.accessToken,
-           let exp = tokenStore.accessTokenExpiresAt,
-           exp > Date().addingTimeInterval(60) {
-            return access
-        }
-        guard let refresh = tokenStore.refreshToken else {
-            throw HubSpotError.notConnected
-        }
-        try await refreshTokens(refreshToken: refresh)
-        guard let access = tokenStore.accessToken else {
-            throw HubSpotError.notConnected
-        }
-        return access
-    }
-
-    private static func randomURLSafeString(length: Int) -> String {
-        let chars = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
-        return String((0..<length).compactMap { _ in chars.randomElement() })
-    }
-
-    private static func pkceChallenge(from verifier: String) -> String {
-        let data = Data(verifier.utf8)
-        let hash = SHA256.hash(data: data)
-        return Data(hash).base64URLEncodedString()
-    }
-
-    private static func formURLEncoded(_ dict: [String: String]) -> Data {
-        let str = dict
-            .map { key, value in
-                "\(key)=\(value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value)"
-            }
-            .joined(separator: "&")
-        return Data(str.utf8)
-    }
-}
-
-extension HubSpotAuthManager: ASWebAuthenticationPresentationContextProviding {
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        // Best-effort: use the first key window
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
-            return window
-        }
-        return ASPresentationAnchor()
-    }
-}
-
-private struct HubSpotTokenResponse: Codable {
-    let access_token: String
-    let refresh_token: String?
-    let expires_in: Int
-}
-
-private enum HubSpotError: Error {
-    case notConnected
-    case httpError(data: Data)
-}
-
-private final class HubSpotTokenStore {
-    private let service = "com.salesdiver.hubspot"
-    private let accessKey = "access_token"
-    private let refreshKey = "refresh_token"
-    private let expiresKey = "access_expires_at"
-
-    var accessToken: String? { read(accessKey) }
-    var refreshToken: String? { read(refreshKey) }
-
-    var accessTokenExpiresAt: Date? {
-        guard let s = read(expiresKey), let t = TimeInterval(s) else { return nil }
-        return Date(timeIntervalSince1970: t)
-    }
-
-    var hasValidRefreshToken: Bool { refreshToken != nil }
-
-    func save(_ token: HubSpotTokenResponse) {
-        write(token.access_token, for: accessKey)
-        if let refresh = token.refresh_token { write(refresh, for: refreshKey) }
-        let exp = Date().addingTimeInterval(TimeInterval(token.expires_in))
-        write(String(exp.timeIntervalSince1970), for: expiresKey)
-    }
-
-    func clear() {
-        delete(accessKey)
-        delete(refreshKey)
-        delete(expiresKey)
-    }
-
-    private func write(_ value: String, for key: String) {
-        let data = Data(value.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(query as CFDictionary)
-        let add: [String: Any] = query.merging([kSecValueData as String: data]) { $1 }
-        SecItemAdd(add as CFDictionary, nil)
-    }
-
-    private func read(_ key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    private func delete(_ key: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(query as CFDictionary)
-    }
-}
-
-private final class HubSpotAPIClient {
-    private let accessToken: String
-
-    init(accessToken: String) { self.accessToken = accessToken }
-
-    func listDeals(limit: Int) async throws -> [HubSpotDeal] {
-        var comps = URLComponents(string: "https://api.hubapi.com/crm/v3/objects/deals")!
-        comps.queryItems = [.init(name: "limit", value: String(limit))]
-
-        var req = URLRequest(url: comps.url!)
-        req.httpMethod = "GET"
-        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw HubSpotError.httpError(data: data)
-        }
-        let decoded = try JSONDecoder().decode(HubSpotDealListResponse.self, from: data)
-        return decoded.results
-    }
-}
-
-private struct HubSpotDealListResponse: Codable {
-    let results: [HubSpotDeal]
-}
-
-private struct HubSpotDeal: Codable {
-    let id: String
-    let properties: [String: String]?
-}
-
-private extension Data {
-    func base64URLEncodedString() -> String {
-        base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
-    }
-}
-
-// MARK: - Help Views
 
 struct OpenAIHelpView: View {
     var body: some View {
@@ -1795,3 +1592,11 @@ struct AutotaskHelpView: View {
         .navigationTitle("Autotask Help")
     }
 }
+
+// MARK: - HubSpot UI Models
+/// A small, public, UI-friendly model so SettingsView does not depend on private API response types.
+struct HubSpotDealSummary: Identifiable, Hashable {
+    let id: String
+    let name: String
+}
+

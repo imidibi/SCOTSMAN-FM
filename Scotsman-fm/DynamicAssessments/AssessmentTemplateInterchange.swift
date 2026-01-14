@@ -318,7 +318,7 @@ enum CSVCodec {
             if trimmed.hasPrefix("#") { continue } // ignore comments
 
             let cols = trimTrailingEmpties(parseCSVRow(trimmed))
-            var padded = cols
+            let padded = cols
             guard !cols.isEmpty else { continue }
 
             // Normalize first token

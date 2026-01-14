@@ -4,7 +4,7 @@ import CoreData
 
 struct ContentView: View {
     @StateObject private var companyViewModel = CompanyViewModel()
-    @StateObject private var hubSpotAuth = HubSpotAuthManager.shared
+    @EnvironmentObject private var hubSpotAuth: HubSpotAuthManager
 
     var body: some View {
         NavigationStack {
@@ -28,9 +28,7 @@ struct ContentView: View {
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        NavigationLink(destination: SettingsView(companyViewModel: companyViewModel)
-                            .environmentObject(hubSpotAuth)
-                        ) {
+                        NavigationLink(destination: SettingsView(companyViewModel: companyViewModel)) {
                             Image(systemName: "gearshape.fill")
                                 .imageScale(.large)
                                 .padding(5)
@@ -88,7 +86,7 @@ struct BrandHeaderView: View {
                     .tracking(4)
             }
 
-            Text("Field Manual")
+            Text("Final Mile")
                 .font(.headline)
                 .foregroundColor(BrandColors.textSecondary)
         }
