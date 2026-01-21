@@ -63,7 +63,8 @@ struct ProductSelection: Hashable {
     @State private var isHubspotSearching: Bool = false
     @State private var isHubspotImporting: Bool = false
     @State private var showHubspotDealPicker: Bool = false
-    
+    @State private var hubspotImportTapCount: Int = 0
+
     private var searchHeaderText: String {
         switch selectedCategory {
         case "Contact":
@@ -390,6 +391,9 @@ struct ProductSelection: Hashable {
             VStack(spacing: 12) {
                 Text("Select deals to import")
                     .font(.headline)
+                Text("Selected: \(selectedHubSpotDealIDs.count)  Importing: \(isHubspotImporting ? "Yes" : "No")  Sheet: \(showHubspotDealPicker ? "Shown" : "Hidden")  Taps: \(hubspotImportTapCount)")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
 
                 if hubspotDealSearchResults.isEmpty {
                     Text("No deals to show.")
@@ -425,7 +429,7 @@ struct ProductSelection: Hashable {
                     Spacer()
 
                     Button(isHubspotImporting ? "Importing…" : "Import Selected") {
-                        print("[HubSpot Import] Import button tapped")
+                        hubspotImportTapCount += 1
                         hubspotImportSelectedDealsTapped()
                     }
                     .disabled(selectedHubSpotDealIDs.isEmpty || isHubspotImporting)
@@ -439,27 +443,55 @@ struct ProductSelection: Hashable {
                     Button("Done") { showHubspotDealPicker = false }
                 }
             }
+            .overlay(
+                Group {
+                    if isHubspotImporting {
+                        ZStack {
+                            Color.black.opacity(0.2).ignoresSafeArea()
+                            ProgressView("Importing…")
+                                .padding()
+                                .background(Color(UIColor.systemBackground))
+                                .cornerRadius(12)
+                        }
+                    }
+                }
+            )
         }
     }
 
     private func hubspotImportSelectedDealsTapped() {
         isHubspotImporting = true
-        print("[HubSpot Import] Import started; selected deal IDs: \(selectedHubSpotDealIDs)")
-        print("[HubSpot Import] Current search results IDs: \(hubspotDealSearchResults.map{ $0.id })")
+        // print("[HubSpot Import] Import started; selected deal IDs: \(selectedHubSpotDealIDs)")
+        // print("[HubSpot Import] Current search results IDs: \(hubspotDealSearchResults.map{ $0.id })")
         let selectedIDs = selectedHubSpotDealIDs
         var failureCount = 0
 
         Task {
+            let selectedIDsCopy = selectedIDs
+
+            // Safety reset in case of early returns/errors
+            defer {
+                Task { @MainActor in
+                    isHubspotImporting = false
+                    showHubspotDealPicker = false
+                    let successCount = max(0, selectedIDsCopy.count - failureCount)
+                    if hubspotStatusMessage.isEmpty {
+                        hubspotStatusMessage = failureCount > 0 ? "Imported \(successCount) deals with \(failureCount) errors." : "Successfully imported \(successCount) deals."
+                    }
+                    companyViewModel.fetchCompanies()
+                }
+            }
+
             let context = CoreDataManager.shared.persistentContainer.viewContext
 
             for dealID in selectedIDs {
-                print("[HubSpot Import] Iterating dealID=\(dealID)")
+                // print("[HubSpot Import] Iterating dealID=\(dealID)")
                 guard let dealSummary = hubspotDealSearchResults.first(where: { $0.id == dealID }) else {
-                    print("[HubSpot Import] No dealSummary found for dealID=\(dealID). Skipping.")
+                    // print("[HubSpot Import] No dealSummary found for dealID=\(dealID). Skipping.")
                     failureCount += 1
                     continue
                 }
-                print("[HubSpot Import] Found dealSummary for dealID=\(dealID): name=\(dealSummary.name)")
+                // print("[HubSpot Import] Found dealSummary for dealID=\(dealID): name=\(dealSummary.name)")
 
                 // 1) Try to fetch full company details associated with the deal from HubSpot
                 var resolvedCompany: CompanyEntity?
@@ -470,7 +502,7 @@ struct ProductSelection: Hashable {
                     if let details = try await hubSpotAuth.fetchCompanyDetailsForDeal(dealID: dealID) {
                         let name = details.name.trimmingCharacters(in: .whitespacesAndNewlines)
                         let resolvedName = name.isEmpty ? deriveCompanyName(fromDealName: dealSummary.name) : name
-                        print("[HubSpot Import] DealID=\(dealID) resolved company via API: name=\(resolvedName), address1=\(details.address1 ?? "nil"), city=\(details.city ?? "nil"), state=\(details.state ?? "nil"), postal=\(details.postalCode ?? "nil")")
+                        // print("[HubSpot Import] DealID=\(dealID) resolved company via API: name=\(resolvedName), address1=\(details.address1 ?? "nil"), city=\(details.city ?? "nil"), state=\(details.state ?? "nil"), postal=\(details.postalCode ?? "nil")")
                         let company = fetchOrCreateCompanyByName(name: resolvedName, in: context)
                         if let v = details.address1 { company.address = v }
                         if let v = details.address2 { company.address2 = v }
@@ -491,12 +523,12 @@ struct ProductSelection: Hashable {
                         resolvedCompany = company
                     } else {
                         let derivedCompanyName = deriveCompanyName(fromDealName: dealSummary.name)
-                        print("[HubSpot Import] DealID=\(dealID) no associated company returned; falling back to derived name: \(derivedCompanyName)")
+                        // print("[HubSpot Import] DealID=\(dealID) no associated company returned; falling back to derived name: \(derivedCompanyName)")
                         resolvedCompany = bestMatchingOrCreateCompany(forDealName: dealSummary.name, derivedCompanyName: derivedCompanyName, in: context)
                     }
                 } catch {
                     let derivedCompanyName = deriveCompanyName(fromDealName: dealSummary.name)
-                    print("[HubSpot Import] DealID=\(dealID) company details fetch failed; error=\(error). Falling back to derived name: \(derivedCompanyName)")
+                    // print("[HubSpot Import] DealID=\(dealID) company details fetch failed; error=\(error). Falling back to derived name: \(derivedCompanyName)")
                     resolvedCompany = bestMatchingOrCreateCompany(forDealName: dealSummary.name, derivedCompanyName: derivedCompanyName, in: context)
                 }
 
@@ -511,7 +543,7 @@ struct ProductSelection: Hashable {
                 let opportunityEntity = fetchOrCreateOpportunityByName(name: dealSummary.name, company: companyEntity, in: context)
                 opportunityEntity.estimatedValue = 0
                 opportunityEntity.status = 1
-                print("[HubSpot Import] Linked opportunity \(dealSummary.name) to company \(companyEntity.name ?? "(nil)")")
+                // print("[HubSpot Import] Linked opportunity \(dealSummary.name) to company \(companyEntity.name ?? "(nil)")")
 
                 // 4) Optionally upsert a contact and attach to company
                 if let contact = resolvedContact {
@@ -521,6 +553,7 @@ struct ProductSelection: Hashable {
                 CoreDataManager.shared.saveContext()
             }
 
+            /*
             await MainActor.run {
                 let successCount = selectedIDs.count - failureCount
                 if failureCount > 0 {
@@ -533,6 +566,7 @@ struct ProductSelection: Hashable {
                 showHubspotDealPicker = false
                 companyViewModel.fetchCompanies()
             }
+            */
         }
     }
     
@@ -1771,6 +1805,7 @@ private func importSelectedContacts() {
         AutotaskAPIManager.shared.searchServicesFromBody(requestBody, completion: completionBlock)
     }
 }
+ 
 
 
 
@@ -1831,4 +1866,6 @@ struct HubSpotDealSummary: Identifiable, Hashable {
     let id: String
     let name: String
 }
+
+
 
