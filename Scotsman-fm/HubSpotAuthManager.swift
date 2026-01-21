@@ -11,6 +11,17 @@ import CryptoKit
 import OSLog
 import UIKit
 
+struct HubSpotCompanyDetails {
+    let id: String
+    let name: String
+    let address1: String?
+    let address2: String?
+    let city: String?
+    let state: String?
+    let postalCode: String?
+    let lifecycleStage: String?
+}
+
 @MainActor
 final class HubSpotAuthManager: NSObject, ObservableObject {
     /// Singleton used as an app-wide EnvironmentObject.
@@ -144,7 +155,7 @@ final class HubSpotAuthManager: NSObject, ObservableObject {
         let deals = try await client.searchDeals(query: query, limit: limit)
 
         return deals.map { deal in
-            let name = deal.properties?["dealname"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let name = deal.properties?["dealname"]?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
             return HubSpotDealSummary(id: deal.id, name: (name?.isEmpty == false) ? name! : "(Unnamed deal)")
         }
     }
@@ -155,9 +166,149 @@ final class HubSpotAuthManager: NSObject, ObservableObject {
         let deals = try await client.listDeals(limit: limit)
 
         return deals.map { deal in
-            let name = deal.properties?["dealname"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let name = deal.properties?["dealname"]?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
             return HubSpotDealSummary(id: deal.id, name: (name?.isEmpty == false) ? name! : "(Unnamed deal)")
         }
+    }
+    
+    public func fetchCompanyDetailsForDeal(dealID: String) async throws -> HubSpotCompanyDetails? {
+        let accessToken = try await ensureAccessToken()
+        
+        // 1) Get associated company IDs for the deal
+        let assocURLString = "https://api.hubapi.com/crm/v4/objects/deals/\(dealID)/associations/companies"
+        let assocData = try await getData(from: assocURLString, accessToken: accessToken)
+        
+        struct AssociationsResponse: Decodable {
+            struct Result: Decodable {
+                let toObjectId: String
+                init(from decoder: Decoder) throws {
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+                    // HubSpot may return numeric IDs; support both number and string
+                    if let intValue = try? container.decode(Int64.self, forKey: .toObjectId) {
+                        self.toObjectId = String(intValue)
+                    } else if let stringValue = try? container.decode(String.self, forKey: .toObjectId) {
+                        self.toObjectId = stringValue
+                    } else {
+                        throw DecodingError.typeMismatch(String.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Expected String or Int64 for toObjectId"))
+                    }
+                }
+                private enum CodingKeys: String, CodingKey { case toObjectId }
+            }
+            let results: [Result]
+        }
+        
+        let associations = try JSONDecoder().decode(AssociationsResponse.self, from: assocData)
+        let companyID = associations.results.first?.toObjectId
+        logger.info("HubSpot associations for deal \(dealID, privacy: .public): fetched companyID=\(companyID ?? "nil", privacy: .public)")
+        guard let firstCompanyId = companyID else {
+            return nil
+        }
+        
+        // 2) Fetch company record details
+        let companyURLString = "https://api.hubapi.com/crm/v3/objects/companies/\(firstCompanyId)?properties=name,address,address2,city,state,zip,lifecyclestage"
+        let companyData = try await getData(from: companyURLString, accessToken: accessToken)
+        
+        struct CompanyResponse: Decodable {
+            struct Properties: Decodable {
+                let name: String?
+                let address: String?
+                let address2: String?
+                let city: String?
+                let state: String?
+                let zip: String?
+                let lifecyclestage: String?
+            }
+            let id: String
+            let properties: Properties
+        }
+        
+        let company = try JSONDecoder().decode(CompanyResponse.self, from: companyData)
+        let props = company.properties
+        
+        let name = (props.name?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty == false) ? props.name! : "(Unnamed company)"
+        logger.info("HubSpot company details: name=\(name, privacy: .public), city=\(props.city ?? "", privacy: .public), state=\(props.state ?? "", privacy: .public), zip=\(props.zip ?? "", privacy: .public), lifecyclestage=\(props.lifecyclestage ?? "", privacy: .public)")
+        
+        return HubSpotCompanyDetails(
+            id: company.id,
+            name: name,
+            address1: props.address,
+            address2: props.address2,
+            city: props.city,
+            state: props.state,
+            postalCode: props.zip,
+            lifecycleStage: props.lifecyclestage
+        )
+    }
+    
+    public func searchCompanyDetailsByName(name: String) async throws -> HubSpotCompanyDetails? {
+        let accessToken = try await ensureAccessToken()
+
+        let urlString = "https://api.hubapi.com/crm/v3/objects/companies/search"
+        guard let url = URL(string: urlString) else {
+            throw URLError(.badURL)
+        }
+
+        let body: [String: Any] = [
+            "filterGroups": [[
+                "filters": [[
+                    "propertyName": "name",
+                    "operator": "CONTAINS_TOKEN",
+                    "value": name
+                ]]
+            ]],
+            "properties": ["name","address","address2","city","state","zip"],
+            "limit": 1
+        ]
+
+        let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = jsonData
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw HubSpotError.httpError(data: data)
+        }
+
+        struct SearchResponse: Decodable {
+            struct Result: Decodable {
+                let id: String
+                struct Properties: Decodable {
+                    let name: String?
+                    let address: String?
+                    let address2: String?
+                    let city: String?
+                    let state: String?
+                    let zip: String?
+                }
+                let properties: Properties
+            }
+            let results: [Result]
+        }
+
+        let response = try JSONDecoder().decode(SearchResponse.self, from: data)
+        guard let firstResult = response.results.first else {
+            logger.info("HubSpot company search by name \"\(name, privacy: .public)\": no match found")
+            return nil
+        }
+
+        let props = firstResult.properties
+        let trimmedName = (props.name?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty == false) ? props.name! : "(Unnamed company)"
+        logger.info("HubSpot company search by name \"\(name, privacy: .public)\": matched company name \"\(trimmedName, privacy: .public)\"")
+
+        return HubSpotCompanyDetails(
+            id: firstResult.id,
+            name: trimmedName,
+            address1: props.address,
+            address2: props.address2,
+            city: props.city,
+            state: props.state,
+            postalCode: props.zip,
+            lifecycleStage: nil
+        )
     }
 
     func importDealsPlaceholder(dealIDs: [String]) async throws {
@@ -233,6 +384,35 @@ final class HubSpotAuthManager: NSObject, ObservableObject {
         }
         return access
     }
+    
+    private func getData(from urlString: String, accessToken: String) async throws -> Data {
+        guard let url = URL(string: urlString) else {
+            throw URLError(.badURL)
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw HubSpotError.httpError(data: data)
+        }
+        return data
+    }
+    
+    private func authorizedPostJSON<T: Encodable>(url: URL, accessToken: String, body: T) async throws -> Data {
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(body)
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw HubSpotError.httpError(data: data)
+        }
+        return data
+    }
 
     // MARK: - Helpers
 
@@ -275,3 +455,4 @@ private extension Data {
             .replacingOccurrences(of: "=", with: "" )
     }
 }
+

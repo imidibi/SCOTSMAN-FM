@@ -244,6 +244,19 @@ struct ProductSelection: Hashable {
         .frame(width: 600, height: 500)
         .shadow(radius: 20)
         .padding()
+        .overlay(
+            Group {
+                if isHubspotImporting {
+                    ZStack {
+                        Color.black.opacity(0.2).ignoresSafeArea()
+                        ProgressView("Importing…")
+                            .padding()
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                    }
+                }
+            }
+        )
         .onAppear {
             fetchAllOpportunitiesForSelectedCompany()
         }
@@ -412,6 +425,7 @@ struct ProductSelection: Hashable {
                     Spacer()
 
                     Button(isHubspotImporting ? "Importing…" : "Import Selected") {
+                        print("[HubSpot Import] Import button tapped")
                         hubspotImportSelectedDealsTapped()
                     }
                     .disabled(selectedHubSpotDealIDs.isEmpty || isHubspotImporting)
@@ -429,14 +443,232 @@ struct ProductSelection: Hashable {
     }
 
     private func hubspotImportSelectedDealsTapped() {
-        // POC: we’ll wire this to Core Data import next.
         isHubspotImporting = true
-        let count = selectedHubSpotDealIDs.count
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            hubspotStatusMessage = "Selected \(count) deal(s). Next step: import into Core Data + fetch company/contacts."
-            isHubspotImporting = false
-            showHubspotDealPicker = false
+        print("[HubSpot Import] Import started; selected deal IDs: \(selectedHubSpotDealIDs)")
+        print("[HubSpot Import] Current search results IDs: \(hubspotDealSearchResults.map{ $0.id })")
+        let selectedIDs = selectedHubSpotDealIDs
+        var failureCount = 0
+
+        Task {
+            let context = CoreDataManager.shared.persistentContainer.viewContext
+
+            for dealID in selectedIDs {
+                print("[HubSpot Import] Iterating dealID=\(dealID)")
+                guard let dealSummary = hubspotDealSearchResults.first(where: { $0.id == dealID }) else {
+                    print("[HubSpot Import] No dealSummary found for dealID=\(dealID). Skipping.")
+                    failureCount += 1
+                    continue
+                }
+                print("[HubSpot Import] Found dealSummary for dealID=\(dealID): name=\(dealSummary.name)")
+
+                // 1) Try to fetch full company details associated with the deal from HubSpot
+                var resolvedCompany: CompanyEntity?
+                var resolvedContact: (firstName: String, lastName: String, email: String?)?
+
+                do {
+                    // Prefer a direct association fetch
+                    if let details = try await hubSpotAuth.fetchCompanyDetailsForDeal(dealID: dealID) {
+                        let name = details.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let resolvedName = name.isEmpty ? deriveCompanyName(fromDealName: dealSummary.name) : name
+                        print("[HubSpot Import] DealID=\(dealID) resolved company via API: name=\(resolvedName), address1=\(details.address1 ?? "nil"), city=\(details.city ?? "nil"), state=\(details.state ?? "nil"), postal=\(details.postalCode ?? "nil")")
+                        let company = fetchOrCreateCompanyByName(name: resolvedName, in: context)
+                        if let v = details.address1 { company.address = v }
+                        if let v = details.address2 { company.address2 = v }
+                        if let v = details.city { company.city = v }
+                        if let v = details.state { company.state = v }
+                        if let v = details.postalCode { company.zipCode = v }
+                        // Map HubSpot lifecycle stage to Core Data companyType (Int16)
+                        if let stage = details.lifecycleStage?.lowercased() {
+                            switch stage {
+                            case "opportunity":
+                                company.companyType = 3 // Prospect
+                            case "customer":
+                                company.companyType = 1 // Customer
+                            default:
+                                break // leave unchanged for other stages
+                            }
+                        }
+                        resolvedCompany = company
+                    } else {
+                        let derivedCompanyName = deriveCompanyName(fromDealName: dealSummary.name)
+                        print("[HubSpot Import] DealID=\(dealID) no associated company returned; falling back to derived name: \(derivedCompanyName)")
+                        resolvedCompany = bestMatchingOrCreateCompany(forDealName: dealSummary.name, derivedCompanyName: derivedCompanyName, in: context)
+                    }
+                } catch {
+                    let derivedCompanyName = deriveCompanyName(fromDealName: dealSummary.name)
+                    print("[HubSpot Import] DealID=\(dealID) company details fetch failed; error=\(error). Falling back to derived name: \(derivedCompanyName)")
+                    resolvedCompany = bestMatchingOrCreateCompany(forDealName: dealSummary.name, derivedCompanyName: derivedCompanyName, in: context)
+                }
+
+                // 2) Contact association (optional): Not implemented in HubSpotAuthManager; skipping for now.
+
+                guard let companyEntity = resolvedCompany else {
+                    failureCount += 1
+                    continue
+                }
+
+                // 3) Upsert the opportunity under the resolved company
+                let opportunityEntity = fetchOrCreateOpportunityByName(name: dealSummary.name, company: companyEntity, in: context)
+                opportunityEntity.estimatedValue = 0
+                opportunityEntity.status = 1
+                print("[HubSpot Import] Linked opportunity \(dealSummary.name) to company \(companyEntity.name ?? "(nil)")")
+
+                // 4) Optionally upsert a contact and attach to company
+                if let contact = resolvedContact {
+                    upsertContact(firstName: contact.firstName, lastName: contact.lastName, email: contact.email, for: companyEntity, in: context)
+                }
+
+                CoreDataManager.shared.saveContext()
+            }
+
+            await MainActor.run {
+                let successCount = selectedIDs.count - failureCount
+                if failureCount > 0 {
+                    hubspotStatusMessage = "Imported \(successCount) deals with \(failureCount) errors."
+                } else {
+                    hubspotStatusMessage = "Successfully imported \(successCount) deals."
+                }
+                selectedHubSpotDealIDs.removeAll()
+                isHubspotImporting = false
+                showHubspotDealPicker = false
+                companyViewModel.fetchCompanies()
+            }
         }
+    }
+    
+    // Helpers for Core Data persistence of HubSpot data
+    
+    private func fetchOrCreateCompanyByName(name: String, in context: NSManagedObjectContext) -> CompanyEntity {
+        let fetchRequest: NSFetchRequest<CompanyEntity> = CompanyEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "name ==[c] %@", name)
+        fetchRequest.fetchLimit = 1
+        
+        if let existing = try? context.fetch(fetchRequest).first {
+            if existing.name != name {
+                existing.name = name
+            }
+            return existing
+        } else {
+            let newCompany = CompanyEntity(context: context)
+            newCompany.name = name
+            return newCompany
+        }
+    }
+    
+    private func fetchOrCreateOpportunityByName(name: String, company: CompanyEntity, in context: NSManagedObjectContext) -> OpportunityEntity {
+        let fetchRequest: NSFetchRequest<OpportunityEntity> = OpportunityEntity.fetchRequest()
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+            NSPredicate(format: "name ==[c] %@", name),
+            NSPredicate(format: "company == %@", company)
+        ])
+        fetchRequest.fetchLimit = 1
+        
+        if let existing = try? context.fetch(fetchRequest).first {
+            if existing.name != name {
+                existing.name = name
+            }
+            existing.company = company
+            return existing
+        } else {
+            let newOpportunity = OpportunityEntity(context: context)
+            newOpportunity.name = name
+            newOpportunity.company = company
+            return newOpportunity
+        }
+    }
+    
+    private func upsertContact(firstName: String, lastName: String, email: String?, for company: CompanyEntity, in context: NSManagedObjectContext) {
+        let fetchRequest: NSFetchRequest<ContactsEntity> = ContactsEntity.fetchRequest()
+        if let email = email, !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            fetchRequest.predicate = NSPredicate(format: "company == %@ AND emailAddress ==[c] %@", company, email)
+        } else {
+            fetchRequest.predicate = NSPredicate(format: "company == %@ AND firstName ==[c] %@ AND lastName ==[c] %@", company, firstName, lastName)
+        }
+        fetchRequest.fetchLimit = 1
+        
+        if let existing = try? context.fetch(fetchRequest).first {
+            var changed = false
+            if existing.firstName != firstName {
+                existing.firstName = firstName
+                changed = true
+            }
+            if existing.lastName != lastName {
+                existing.lastName = lastName
+                changed = true
+            }
+            if let email = email, existing.emailAddress != email {
+                existing.emailAddress = email
+                changed = true
+            }
+            if changed {
+                // No explicit save here; save after batch
+            }
+        } else {
+            let newContact = ContactsEntity(context: context)
+            newContact.id = UUID()
+            newContact.firstName = firstName
+            newContact.lastName = lastName
+            newContact.emailAddress = email
+            newContact.company = company
+        }
+    }
+    
+    // Helper to derive company name from a HubSpot deal name using common separators
+    // Note: Used only as a fallback when HubSpot company details can't be fetched.
+    private func deriveCompanyName(fromDealName dealName: String) -> String {
+        let separators = [" - ", " – ", " — ", ":", "|"]
+        for sep in separators {
+            let components = dealName.components(separatedBy: sep)
+            for component in components {
+                let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    return trimmed
+                }
+            }
+        }
+        return dealName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    // New helper: bestMatchingOrCreateCompany
+    private func bestMatchingOrCreateCompany(forDealName dealName: String, derivedCompanyName: String, in context: NSManagedObjectContext) -> CompanyEntity {
+        // Fetch all companies
+        let fetchRequest: NSFetchRequest<CompanyEntity> = CompanyEntity.fetchRequest()
+        fetchRequest.returnsObjectsAsFaults = false
+        
+        guard let existingCompanies = try? context.fetch(fetchRequest) else {
+            // If fetch fails, fallback to create by derivedCompanyName
+            return fetchOrCreateCompanyByName(name: derivedCompanyName, in: context)
+        }
+        
+        // Lowercased for comparisons
+        let derivedLower = derivedCompanyName.lowercased()
+        let dealNameLower = dealName.lowercased()
+        
+        // 1) Exact case-insensitive match on derivedCompanyName
+        if let exactMatch = existingCompanies.first(where: { $0.name?.lowercased() == derivedLower }) {
+            return exactMatch
+        }
+        
+        // 2) Substring containment on dealName - find companies whose names appear in dealName
+        let matchedCompanies = existingCompanies.filter {
+            if let existingName = $0.name?.lowercased() {
+                return dealNameLower.contains(existingName)
+            }
+            return false
+        }
+        
+        if !matchedCompanies.isEmpty {
+            // Choose longest matching name to avoid short false positives
+            let longestMatch = matchedCompanies.max(by: {
+                ($0.name?.count ?? 0) < ($1.name?.count ?? 0)
+            })
+            if let longestMatch = longestMatch {
+                return longestMatch
+            }
+        }
+        
+        // 3) Fallback: create or fetch by derivedCompanyName
+        return fetchOrCreateCompanyByName(name: derivedCompanyName, in: context)
     }
     
    var body: some View {
