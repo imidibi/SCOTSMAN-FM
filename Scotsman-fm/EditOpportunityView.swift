@@ -22,12 +22,9 @@ struct EditOpportunityView: View {
     @StateObject private var productViewModel = ProductViewModel()
 
     @State private var probability: Int = 0
-    @State private var monthlyRevenue: String = ""
-    @State private var onetimeRevenue: String = ""
     @State private var estimatedValue: String = ""
-    @State private var isEstimatedOverridden = false
-
     @State private var status: Int = 1
+    @State private var forecastCategory: Int = 0 // 0=omitted, 1=pipeline, 2=best case, 3=commit, 4=closed
 
     var body: some View {
         NavigationStack {
@@ -97,41 +94,7 @@ struct EditOpportunityView: View {
                     }
 
                     HStack {
-                        Text("Monthly Revenue:")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        HStack {
-                            Text("$")
-                            TextField("e.g. 1000", text: $monthlyRevenue)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .foregroundColor(.primary)
-                        }
-                        .frame(width: 120)
-                        .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
-                        .onChange(of: monthlyRevenue) { updateEstimatedValue() }
-                    }
-
-                    HStack {
-                        Text("One-Time Revenue:")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        HStack {
-                            Text("$")
-                            TextField("e.g. 5000", text: $onetimeRevenue)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .foregroundColor(.primary)
-                        }
-                        .frame(width: 120)
-                        .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
-                        .onChange(of: onetimeRevenue) { updateEstimatedValue() }
-                    }
-
-                    HStack {
-                        Text("Estimated Value:")
+                        Text("Amount:")
                             .foregroundColor(.primary)
                         Spacer()
                         HStack {
@@ -140,7 +103,6 @@ struct EditOpportunityView: View {
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                                 .foregroundColor(.primary)
-                                .onChange(of: estimatedValue) { isEstimatedOverridden = true }
                         }
                         .frame(width: 120)
                         .padding(8)
@@ -154,6 +116,20 @@ struct EditOpportunityView: View {
                             Text("Active").tag(1)
                             Text("Lost").tag(2)
                             Text("Closed").tag(3)
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    .padding(.horizontal)
+
+                    VStack(alignment: .leading) {
+                        Text("Forecast Category:")
+                            .foregroundColor(.primary)
+                        Picker("Forecast Category", selection: $forecastCategory) {
+                            Text("Omitted").tag(0)
+                            Text("Pipeline").tag(1)
+                            Text("Best Case").tag(2)
+                            Text("Commit").tag(3)
+                            Text("Closed").tag(4)
                         }
                         .pickerStyle(SegmentedPickerStyle())
                     }
@@ -196,8 +172,7 @@ struct EditOpportunityView: View {
         closeDate = opportunity.closeDate
 
         probability = opportunity.probability
-        monthlyRevenue = String(format: "%.2f", opportunity.monthlyRevenue)
-        onetimeRevenue = String(format: "%.2f", opportunity.onetimeRevenue)
+        
         estimatedValue = String(format: "%.2f", opportunity.estimatedValue)
 
         // ✅ Set initial selected product
@@ -206,12 +181,12 @@ struct EditOpportunityView: View {
         }
         
         status = Int(opportunity.status)
+        
+        forecastCategory = Int(opportunity.managedObject.value(forKey: "forecastCategory") as? Int16 ?? 0)
     }
 
     private func saveOpportunity() {
-        guard let monthly = Double(monthlyRevenue),
-              let onetime = Double(onetimeRevenue),
-              let estimated = Double(estimatedValue) else { return }
+        guard let estimated = Double(estimatedValue) else { return }
 
         // ✅ Fetch the correct ProductEntity from Core Data
         var updatedProduct: NSManagedObject? = opportunity.managedObject.value(forKey: "product") as? NSManagedObject
@@ -233,10 +208,11 @@ struct EditOpportunityView: View {
             name: name,
             closeDate: closeDate,
             probability: Int16(probability),
-            monthlyRevenue: monthly,
-            onetimeRevenue: onetime,
+            monthlyRevenue: 0.0,
+            onetimeRevenue: 0.0,
             estimatedValue: estimated,
-            status: Int16(status)
+            status: Int16(status),
+            forecastCategory: Int16(forecastCategory)
         )
 
         // ✅ Ensure product is updated separately if needed
@@ -249,19 +225,5 @@ struct EditOpportunityView: View {
     private func deleteOpportunity() {
         viewModel.deleteOpportunity(opportunity: opportunity)  // ✅ Correct function call
         dismiss()
-    }
-    private func updateEstimatedValue() {
-        if isEstimatedOverridden {
-            isEstimatedOverridden = false
-        }
-
-        let monthlyRaw = monthlyRevenue.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-        let oneTimeRaw = onetimeRevenue.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-
-        let monthly = Double(monthlyRaw) ?? 0.0
-        let oneTime = Double(oneTimeRaw) ?? 0.0
-
-        let calculated = (monthly * 12.0) + oneTime
-        estimatedValue = String(format: "%.2f", calculated)
     }
 }

@@ -64,7 +64,7 @@ class OpportunityViewModel: ObservableObject {
         }
     }
     
-    func addOpportunity(name: String, closeDate: Date, company: CompanyWrapper, product: ProductWrapper?, probability: Int16, monthlyRevenue: Double, onetimeRevenue: Double, estimatedValue: Double, status: Int16) {
+    func addOpportunity(name: String, closeDate: Date, company: CompanyWrapper, product: ProductWrapper?, probability: Int16, monthlyRevenue: Double, onetimeRevenue: Double, estimatedValue: Double, status: Int16, forecastCategory: Int16) {
         let entity = NSEntityDescription.entity(forEntityName: "OpportunityEntity", in: context)!
         let newOpportunity = NSManagedObject(entity: entity, insertInto: context)
 
@@ -81,6 +81,7 @@ class OpportunityViewModel: ObservableObject {
         newOpportunity.setValue(onetimeRevenue, forKey: "onetimeRevenue")
         newOpportunity.setValue(estimatedValue, forKey: "estimatedValue")
         newOpportunity.setValue(status, forKey: "status")
+        newOpportunity.setValue(forecastCategory, forKey: "forecastCategory")
 
         newOpportunity.setValue(0, forKey: "budgetStatus")
         newOpportunity.setValue(0, forKey: "authorityStatus")
@@ -95,7 +96,7 @@ class OpportunityViewModel: ObservableObject {
         saveData()
     }
     
-    func updateOpportunity(opportunity: OpportunityWrapper, name: String, closeDate: Date, probability: Int16, monthlyRevenue: Double, onetimeRevenue: Double, estimatedValue: Double, status: Int16) {
+    func updateOpportunity(opportunity: OpportunityWrapper, name: String, closeDate: Date, probability: Int16, monthlyRevenue: Double, onetimeRevenue: Double, estimatedValue: Double, status: Int16, forecastCategory: Int16) {
         opportunity.managedObject.setValue(name, forKey: "name")
         opportunity.managedObject.setValue(closeDate, forKey: "closeDate")
         opportunity.managedObject.setValue(probability, forKey: "probability")
@@ -103,6 +104,7 @@ class OpportunityViewModel: ObservableObject {
         opportunity.managedObject.setValue(onetimeRevenue, forKey: "onetimeRevenue")
         opportunity.managedObject.setValue(estimatedValue, forKey: "estimatedValue")
         opportunity.managedObject.setValue(status, forKey: "status")
+        opportunity.managedObject.setValue(forecastCategory, forKey: "forecastCategory")
 
         saveData()
     }
@@ -290,3 +292,4 @@ class OpportunityViewModel: ObservableObject {
         }
     }
 }
+

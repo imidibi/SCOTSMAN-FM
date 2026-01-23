@@ -239,6 +239,63 @@ final class HubSpotAuthManager: NSObject, ObservableObject {
             lifecycleStage: props.lifecyclestage
         )
     }
+
+    // MARK: - Deal details (for SyncManager)
+    /// Fetches full deal details needed for sync. Returns a dictionary with keys like
+    /// id, dealname, amount, closedate, hs_forecast_category, hs_lastmodifieddate
+    public func fetchDealDetails(dealID: String) async throws -> [String: Any]? {
+        let urlString = "https://api.hubapi.com/crm/v3/objects/deals/\(dealID)?properties=dealname,amount,closedate,hs_forecast_category,forecast_category,dealstage,hs_lastmodifieddate"
+        logger.info("fetchDealDetails URL: \(urlString, privacy: .public)")
+        let accessToken = try await ensureAccessToken()
+        let data = try await getData(from: urlString, accessToken: accessToken)
+
+        struct DealResponse: Decodable {
+            let id: String
+            let properties: [String: String?]
+        }
+        let decoder = JSONDecoder()
+        let response = try decoder.decode(DealResponse.self, from: data)
+
+        var result: [String: Any] = ["id": response.id]
+        for (k, v) in response.properties { result[k] = v ?? nil }
+        return result
+    }
+
+    // MARK: - Company details by ID (for SyncManager)
+    /// Fetches company details for sync by company ID.
+    public func fetchCompanyDetails(companyID: String) async throws -> HubSpotCompanyDetails? {
+        let accessToken = try await ensureAccessToken()
+        let urlString = "https://api.hubapi.com/crm/v3/objects/companies/\(companyID)?properties=name,address,address2,city,state,zip,lifecyclestage"
+        let data = try await getData(from: urlString, accessToken: accessToken)
+
+        struct CompanyResponse: Decodable {
+            struct Properties: Decodable {
+                let name: String?
+                let address: String?
+                let address2: String?
+                let city: String?
+                let state: String?
+                let zip: String?
+                let lifecyclestage: String?
+            }
+            let id: String
+            let properties: Properties
+        }
+
+        let company = try JSONDecoder().decode(CompanyResponse.self, from: data)
+        let props = company.properties
+        let trimmedName = (props.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? props.name! : "(Unnamed company)"
+        return HubSpotCompanyDetails(
+            id: company.id,
+            name: trimmedName,
+            address1: props.address,
+            address2: props.address2,
+            city: props.city,
+            state: props.state,
+            postalCode: props.zip,
+            lifecycleStage: props.lifecyclestage
+        )
+    }
     
     public func searchCompanyDetailsByName(name: String) async throws -> HubSpotCompanyDetails? {
         let accessToken = try await ensureAccessToken()

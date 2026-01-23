@@ -174,6 +174,7 @@ struct ProductSelection: Hashable {
                 }
 
                 opportunity.company = companyEntity
+                
                 context.insert(opportunity)
             }
 
@@ -459,6 +460,39 @@ struct ProductSelection: Hashable {
         }
     }
 
+    // MARK: - HubSpot Parsing Helpers
+    private func mapHubSpotForecastCategory(_ value: String?) -> Int16 {
+        switch value?.lowercased() {
+        case "pipeline":
+            return 1
+        case "bestcase":
+            return 2
+        case "commit":
+            return 3
+        case "closed":
+            return 4
+        case "omitted":
+            fallthrough
+        default:
+            return 0 // unknown/omitted
+        }
+    }
+
+    private func parseHubSpotAmount(_ value: String?) -> Double {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return 0 }
+        return Double(value) ?? 0
+    }
+
+    private func parseHubSpotCloseDate(_ value: String?) -> Date? {
+        guard let value = value, let ms = Double(value) else { return nil }
+        return Date(timeIntervalSince1970: ms / 1000.0)
+    }
+    
+    private func parseHubSpotLastModified(_ value: String?) -> Date? {
+        guard let value = value, let ms = Double(value) else { return nil }
+        return Date(timeIntervalSince1970: ms / 1000.0)
+    }
+
     private func hubspotImportSelectedDealsTapped() {
         isHubspotImporting = true
         // print("[HubSpot Import] Import started; selected deal IDs: \(selectedHubSpotDealIDs)")
@@ -495,7 +529,7 @@ struct ProductSelection: Hashable {
 
                 // 1) Try to fetch full company details associated with the deal from HubSpot
                 var resolvedCompany: CompanyEntity?
-                var resolvedContact: (firstName: String, lastName: String, email: String?)?
+                let resolvedContact: (firstName: String, lastName: String, email: String?)? = nil
 
                 do {
                     // Prefer a direct association fetch
@@ -541,9 +575,51 @@ struct ProductSelection: Hashable {
 
                 // 3) Upsert the opportunity under the resolved company
                 let opportunityEntity = fetchOrCreateOpportunityByName(name: dealSummary.name, company: companyEntity, in: context)
-                opportunityEntity.estimatedValue = 0
+
+                // Default values
                 opportunityEntity.status = 1
-                // print("[HubSpot Import] Linked opportunity \(dealSummary.name) to company \(companyEntity.name ?? "(nil)")")
+
+                // Overwrite local with HubSpot details if available
+                do {
+                    if let full = try await hubSpotAuth.fetchDealDetails(dealID: dealID) {
+                        // Expecting keys: amount (String), closedate (String ms), hs_forecast_category (String), hs_lastmodifieddate (String ms), dealname (String), hubspot_owner_id, pipeline, dealstage, and id
+
+                        // Set HubSpot ID if present
+                        if let idString = full["id"] as? String {
+                            opportunityEntity.setValue(idString, forKey: "hubspotID")
+                        } else {
+                            // Fallback to the selected ID if id not included in payload
+                            opportunityEntity.setValue(dealID, forKey: "hubspotID")
+                        }
+
+                        // Name (optional overwrite to match HubSpot)
+                        if let name = full["dealname"] as? String, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            opportunityEntity.name = name
+                        }
+
+                        // Amount → estimatedValue
+                        if let amountString = full["amount"] as? String {
+                            opportunityEntity.estimatedValue = parseHubSpotAmount(amountString)
+                        }
+
+                        // Close Date
+                        if let closedateString = full["closedate"] as? String, let closeDate = parseHubSpotCloseDate(closedateString) {
+                            opportunityEntity.closeDate = closeDate
+                        }
+
+                        // Forecast Category
+                        if let forecast = full["hs_forecast_category"] as? String {
+                            opportunityEntity.setValue(mapHubSpotForecastCategory(forecast), forKey: "forecastCategory")
+                        }
+
+                        // Last Modified
+                        if let lastModString = full["hs_lastmodifieddate"] as? String, let lastMod = parseHubSpotLastModified(lastModString) {
+                            opportunityEntity.setValue(lastMod, forKey: "lastModified")
+                        }
+                    }
+                } catch {
+                    // If details cannot be fetched, leave defaults; continue
+                }
 
                 // 4) Optionally upsert a contact and attach to company
                 if let contact = resolvedContact {
@@ -1866,6 +1942,5 @@ struct HubSpotDealSummary: Identifiable, Hashable {
     let id: String
     let name: String
 }
-
 
 

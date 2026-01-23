@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5FDF3FCC2F241F03002D8E29 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDF3FCB2F241F03002D8E29 /* SyncManager.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		5F2775CF2D60E1AD00A30762 /* SCOTSMAN-FM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SCOTSMAN-FM.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FDF3FCB2F241F03002D8E29 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -47,6 +52,7 @@
 			children = (
 				5F2775D12D60E1AD00A30762 /* Scotsman-fm */,
 				5F2775D02D60E1AD00A30762 /* Products */,
+				5FDF3FCB2F241F03002D8E29 /* SyncManager.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -132,6 +138,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5FDF3FCC2F241F03002D8E29 /* SyncManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

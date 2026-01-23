@@ -48,9 +48,8 @@ struct OpportunitySummaryView: View {
             }
 
             Text("Probability: \(opportunity.probability)%")
-            Text("Monthly Revenue: $\(opportunity.monthlyRevenue, specifier: "%.2f")")
-            Text("One-Time Revenue: $\(opportunity.onetimeRevenue, specifier: "%.2f")")
-            Text("Estimated Value: $\(opportunity.estimatedValue, specifier: "%.2f")")
+            Text("Amount: $\(opportunity.estimatedValue, specifier: "%.2f")")
+            Text("Forecast Category: \(forecastCategoryText)")
 
             Text("Status: \(statusText)")
                 .foregroundColor(statusColor)
@@ -77,6 +76,18 @@ struct OpportunitySummaryView: View {
         case 2: return .red
         case 3: return .green
         default: return .gray
+        }
+    }
+    
+    private var forecastCategoryText: String {
+        // Read forecastCategory from the managed object if available; default to omitted (0)
+        let code = Int(opportunity.managedObject.value(forKey: "forecastCategory") as? Int16 ?? 0)
+        switch code {
+        case 1: return "pipeline"
+        case 2: return "best case"
+        case 3: return "commit"
+        case 4: return "closed"
+        default: return "omitted"
         }
     }
 }

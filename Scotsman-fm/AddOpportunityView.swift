@@ -11,12 +11,10 @@ struct AddOpportunityView: View {
     @State private var selectedProduct: ProductWrapper?
 
     @State private var probability: Int = 0
-    @State private var monthlyRevenue: String = ""
-    @State private var onetimeRevenue: String = ""
     @State private var estimatedValue: String = ""
-    @State private var isEstimatedOverridden = false
     @State private var isDatePickerVisible: Bool = false  // ✅ Toggle for DatePicker visibility
     @State private var status: Int = 1
+    @State private var forecastCategory: Int = 0 // 0=omitted, 1=pipeline, 2=best case, 3=commit, 4=closed
 
     @State private var companies: [CompanyWrapper] = []
     @State private var products: [ProductWrapper] = []
@@ -98,41 +96,7 @@ struct AddOpportunityView: View {
                             }
                             
                             HStack {
-                                Text("Monthly Revenue:")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                HStack {
-                                    Text("$")
-                                    TextField("e.g. 1000", text: $monthlyRevenue)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .foregroundColor(.primary)
-                                }
-                                .frame(width: 120)
-                                .padding(8)
-                                .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
-                                .onChange(of: monthlyRevenue) { updateEstimatedValue() }
-                            }
-
-                            HStack {
-                                Text("One-Time Revenue:")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                HStack {
-                                    Text("$")
-                                    TextField("e.g. 5000", text: $onetimeRevenue)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .foregroundColor(.primary)
-                                }
-                                .frame(width: 120)
-                                .padding(8)
-                                .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
-                                .onChange(of: onetimeRevenue) { updateEstimatedValue() }
-                            }
-
-                            HStack {
-                                Text("Estimated Value:")
+                                Text("Amount:")
                                     .foregroundColor(.primary)
                                 Spacer()
                                 HStack {
@@ -141,9 +105,6 @@ struct AddOpportunityView: View {
                                         .keyboardType(.decimalPad)
                                         .multilineTextAlignment(.trailing)
                                         .foregroundColor(.primary)
-                                        .onChange(of: estimatedValue) {
-                                            isEstimatedOverridden = true
-                                        }
                                 }
                                 .frame(width: 120)
                                 .padding(8)
@@ -160,6 +121,20 @@ struct AddOpportunityView: View {
                                 Text("Active").tag(1)
                                 Text("Lost").tag(2)
                                 Text("Closed").tag(3)
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                        }
+                        .padding(.horizontal)
+                        
+                        VStack(alignment: .leading) {
+                            Text("Forecast Category:")
+                                .foregroundColor(.primary)
+                            Picker("Forecast Category", selection: $forecastCategory) {
+                                Text("Omitted").tag(0)
+                                Text("Pipeline").tag(1)
+                                Text("Best Case").tag(2)
+                                Text("Commit").tag(3)
+                                Text("Closed").tag(4)
                             }
                             .pickerStyle(SegmentedPickerStyle())
                         }
@@ -232,27 +207,9 @@ struct AddOpportunityView: View {
         products = productViewModel.products
     }
 
-    private func updateEstimatedValue() {
-        if isEstimatedOverridden {
-            isEstimatedOverridden = false
-        }
-
-        let monthlyRaw = monthlyRevenue.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-        let oneTimeRaw = onetimeRevenue.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-
-        let monthly = Double(monthlyRaw) ?? 0.0
-        let oneTime = Double(oneTimeRaw) ?? 0.0
-
-        let calculated = (monthly * 12.0) + oneTime
-        estimatedValue = String(format: "%.2f", calculated)
-    }
-
     // ✅ Save Opportunity
     private func saveOpportunity() {
         guard let company = selectedCompany else { return }
-        let product = selectedProduct
-        let monthly = Double(monthlyRevenue) ?? 0.0
-        let onetime = Double(onetimeRevenue) ?? 0.0
         let estimated = Double(estimatedValue) ?? 0.0
         let probabilityVal = Int16(probability)
 
@@ -260,12 +217,13 @@ struct AddOpportunityView: View {
             name: name,
             closeDate: closeDate,
             company: company,
-            product: product,
+            product: selectedProduct,
             probability: probabilityVal,
-            monthlyRevenue: monthly,
-            onetimeRevenue: onetime,
+            monthlyRevenue: 0.0,
+            onetimeRevenue: 0.0,
             estimatedValue: estimated,
-            status: Int16(status)
+            status: Int16(status),
+            forecastCategory: Int16(forecastCategory)
         )
     }
 }
